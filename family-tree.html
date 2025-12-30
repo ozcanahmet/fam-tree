@@ -1,0 +1,3107 @@
+<!doctype html>
+<html lang="tr">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+  <title>Soy Ağacı Oluşturucu</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f8f9fa;
+      height: 100%;
+      padding: 0;
+      margin: 0;
+      box-sizing: border-box;
+      overflow: hidden;
+      touch-action: none;
+    }
+
+    html {
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .container {
+      max-width: 100%;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+    }
+
+    .main-content {
+      display: flex;
+      gap: 0;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .sidebar {
+      display: none;
+      flex-direction: column;
+      gap: 12px;
+      width: 60px;
+      background: white;
+      padding: 8px;
+      border-radius: 0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      border-right: 1px solid #e9ecef;
+    }
+
+    @media (min-width: 768px) {
+      .sidebar {
+        display: flex;
+      }
+    }
+
+    @media (max-width: 767px) {
+      .main-content {
+        flex-direction: column;
+      }
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 8px;
+      background: white;
+      border-bottom: 1px solid #e9ecef;
+      gap: 8px;
+      overflow-x: auto;
+      flex-wrap: nowrap;
+    }
+
+    .tree-icon {
+      width: 44px;
+      height: 44px;
+      background: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      border: 1px solid #e9ecef;
+      flex-shrink: 0;
+    }
+
+    .tree-icon svg {
+      width: 28px;
+      height: 28px;
+    }
+
+    .mobile-controls {
+      display: flex;
+      gap: 4px;
+      align-items: center;
+      flex-wrap: nowrap;
+    }
+
+    @media (min-width: 768px) {
+      .mobile-controls {
+        display: none;
+      }
+    }
+
+    .controls {
+      display: none;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.9em;
+      font-weight: 500;
+      transition: all 0.2s ease;
+      background: white;
+      color: #495057;
+    }
+
+    .btn:hover {
+      background: #f8f9fa;
+      border-color: #adb5bd;
+    }
+
+    .btn-primary {
+      background: #495057;
+      color: white;
+      border-color: #495057;
+    }
+
+    .btn-primary:hover {
+      background: #343a40;
+      border-color: #343a40;
+    }
+
+    .btn-secondary {
+      background: #6c757d;
+      color: white;
+      border-color: #6c757d;
+    }
+
+    .btn-secondary:hover {
+      background: #5a6268;
+      border-color: #5a6268;
+    }
+
+    .btn-danger {
+      background: #dc3545;
+      color: white;
+      border-color: #dc3545;
+    }
+
+    .btn-danger:hover {
+      background: #c82333;
+      border-color: #c82333;
+    }
+
+    .btn-icon {
+      width: 44px;
+      height: 44px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      background: white;
+      border: 1px solid #dee2e6;
+      color: #495057;
+    }
+
+    .btn-icon:hover {
+      background: #f8f9fa;
+      border-color: #adb5bd;
+    }
+
+    .btn-icon svg {
+      width: 20px;
+      height: 20px;
+      margin: auto;
+    }
+
+    .btn-icon .tooltip {
+      position: absolute;
+      left: 70px;
+      background: #212529;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 0.85em;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+      z-index: 1000;
+    }
+
+    .btn-icon:hover .tooltip {
+      opacity: 1;
+    }
+
+    .btn-icon .tooltip::before {
+      content: '';
+      position: absolute;
+      left: -4px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 0;
+      height: 0;
+      border-top: 4px solid transparent;
+      border-bottom: 4px solid transparent;
+      border-right: 4px solid #212529;
+    }
+
+    .btn-icon-mobile {
+      width: 40px;
+      height: 40px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: white;
+      border: 1px solid #dee2e6;
+      color: #495057;
+      border-radius: 4px;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.15s ease;
+    }
+
+    .btn-icon-mobile svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .btn-icon-mobile:active {
+      background: #e9ecef;
+      transform: scale(0.95);
+    }
+
+    .btn-icon-mobile.btn-primary {
+      background: #495057;
+      color: white;
+      border-color: #495057;
+    }
+
+    .btn-icon-mobile.btn-danger {
+      background: #dc3545;
+      color: white;
+      border-color: #dc3545;
+    }
+
+    @media (min-width: 768px) {
+      .btn-icon-mobile {
+        display: none;
+      }
+    }
+
+    .tree-container {
+      background: white;
+      padding: 0;
+      border-radius: 0;
+      box-shadow: none;
+      overflow: hidden;
+      position: relative;
+      width: 100%;
+      flex: 1;
+      min-height: 0;
+      touch-action: none;
+      border: none;
+      cursor: grab;
+    }
+
+    .tree-container.dragging {
+      cursor: grabbing;
+    }
+
+    .tree-canvas {
+      position: relative;
+      min-width: 20000px;
+      min-height: 20000px;
+      width: 100%;
+      height: 100%;
+      background-image: 
+        linear-gradient(rgba(200, 200, 200, 0.25) 2px, transparent 2px),
+        linear-gradient(90deg, rgba(200, 200, 200, 0.25) 2px, transparent 2px);
+      background-size: 40px 40px;
+      background-position: 0 0;
+      transform-origin: 0 0;
+    }
+    
+    .tree-canvas.zoomed-in {
+      background-image: 
+        linear-gradient(rgba(200, 200, 200, 0.25) 2px, transparent 2px),
+        linear-gradient(90deg, rgba(200, 200, 200, 0.25) 2px, transparent 2px);
+    }
+    
+    .tree-canvas.zoomed-out {
+      background-image: none;
+    }
+
+    .person-node {
+      position: absolute;
+      border-radius: 8px;
+      padding: 20px 20px;
+      cursor: move;
+      transition: all 0.3s ease;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      min-width: 120px;
+      text-align: center;
+      z-index: 100;
+      border: 3px solid rgba(255,255,255,0.3);
+      user-select: none;
+      touch-action: none;
+    }
+
+    .person-node.male {
+      background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+    }
+
+    .person-node.female {
+      background: linear-gradient(135deg, #f9a8d4 0%, #ec4899 100%);
+    }
+
+    .person-node:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+      z-index: 200;
+    }
+
+    .person-node.selected {
+      border-color: #fbbf24;
+      box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.5);
+      z-index: 201;
+    }
+
+    .person-node.connecting {
+      border-color: #10b981;
+      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.5);
+      animation: pulse 1s infinite;
+    }
+
+    .person-node.multi-selected {
+      border-color: #8b5cf6;
+      box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.5);
+    }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.5); }
+      50% { box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.3); }
+    }
+
+    .person-name {
+      font-weight: bold;
+      color: white;
+      font-size: 1.1em;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }
+
+    .person-info {
+      font-size: 0.85em;
+      color: white;
+      margin-top: 5px;
+      padding-top: 5px;
+      border-top: 1px solid rgba(255,255,255,0.3);
+    }
+
+    .info-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      background: rgba(255,255,255,0.3);
+      border-radius: 50%;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-left: 5px;
+      vertical-align: middle;
+    }
+
+    .info-icon:hover {
+      background: rgba(255,255,255,0.5);
+      transform: scale(1.1);
+    }
+
+    .info-icon svg {
+      width: 12px;
+      height: 12px;
+      stroke: white;
+      fill: none;
+    }
+
+    .person-actions {
+      display: flex;
+      gap: 5px;
+      justify-content: center;
+      margin-top: 10px;
+    }
+
+    .btn-small {
+      padding: 6px 12px;
+      font-size: 0.85em;
+      border-radius: 5px;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.7);
+      z-index: 10000;
+      padding: 20px;
+      overflow-y: auto;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 30px;
+      border-radius: 15px;
+      max-width: 500px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 25px;
+      border-bottom: 2px solid #e5e7eb;
+      padding-bottom: 15px;
+    }
+
+    .modal-header h2 {
+      color: #212529;
+      font-size: 1.6em;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      font-size: 2em;
+      cursor: pointer;
+      color: #999;
+      line-height: 1;
+    }
+
+    .close-btn:hover {
+      color: #333;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      color: #333;
+      font-weight: 600;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 1em;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: #495057;
+    }
+
+    .parent-box {
+      background: #f0f9ff;
+      padding: 12px;
+      border-radius: 8px;
+      border: 2px solid #bae6fd;
+      margin-bottom: 10px;
+    }
+
+    .parent-question {
+      font-weight: 600;
+      color: #0c4a6e;
+      margin-bottom: 8px;
+      text-align: center;
+      font-size: 0.95em;
+    }
+
+    .existing-relationship-info {
+      background: #fef3c7;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      text-align: center;
+      color: #92400e;
+      font-weight: 600;
+    }
+
+    .toast {
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      background: #48bb78;
+      color: white;
+      padding: 15px 25px;
+      border-radius: 12px;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+      z-index: 2000;
+      display: none;
+      max-width: 300px;
+      font-size: 0.9em;
+      word-wrap: break-word;
+      word-break: break-word;
+      overflow-wrap: break-word;
+      animation: slideIn 0.3s ease-out;
+    }
+    
+    @keyframes slideIn {
+      from {
+        transform: translateX(400px);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    .toast.active {
+      display: block;
+    }
+
+    .toast.error {
+      background: #f56565;
+    }
+
+    svg.connection-line {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .btn-full-width {
+      width: 100%;
+      margin-bottom: 10px;
+    }
+
+    .history-list {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .history-item {
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 2px solid transparent;
+    }
+
+    .history-item:hover {
+      background: #e9ecef;
+      border-color: #495057;
+    }
+
+    .history-item-date {
+      font-weight: 600;
+      color: #495057;
+      margin-bottom: 5px;
+    }
+
+    .history-item-info {
+      font-size: 0.9em;
+      color: #6c757d;
+    }
+
+    .no-history {
+      text-align: center;
+      padding: 40px 20px;
+      color: #6c757d;
+    }
+  </style>
+  <style>@view-transition { navigation: auto; }</style>
+
+ </head>
+ <body>
+  <div class="container">
+   <div class="header">
+    <div class="tree-icon">
+    </div>
+    <div class="mobile-controls"><button class="btn-icon-mobile" id="addPersonBtnMobile" title="Kişi Ekle">
+      <svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin: auto;"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /> <circle cx="8.5" cy="7" r="4" /> <line x1="20" y1="8" x2="20" y2="14" /> <line x1="23" y1="11" x2="17" y2="11" />
+      </svg></button> <button class="btn-icon-mobile" id="multiSelectBtnMobile" title="Seçim Modu">
+      <svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin: auto;"><rect x="3" y="3" width="7" height="7" /> <rect x="14" y="3" width="7" height="7" /> <rect x="14" y="14" width="7" height="7" /> <rect x="3" y="14" width="7" height="7" />
+      </svg></button> <button id="editPersonBtnMobile" class="btn-icon-mobile btn-primary" style="display: none;" title="Düzenle">
+      <svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin: auto;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /> <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+      </svg></button> <button id="deleteMultipleBtnMobile" class="btn-icon-mobile btn-danger" style="display: none;" title="Sil">
+      <svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin: auto;"><polyline points="3 6 5 6 21 6" /> <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+      </svg></button> <button class="btn-icon-mobile" id="clearSelectionBtnMobile" title="Temizle">
+      <svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18" /> <line x1="6" y1="6" x2="18" y2="18" />
+      </svg></button> <button class="btn-icon-mobile btn-primary" id="saveTreeBtnMobile" title="Kaydet">
+      <svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /> <polyline points="17 21 17 13 7 13 7 21" /> <polyline points="7 3 7 8 15 8" />
+      </svg></button> <button class="btn-icon-mobile" id="loadTreeBtnMobile" title="Yükle">
+      <svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /> <polyline points="14 2 14 8 20 8" /> <line x1="12" y1="18" x2="12" y2="12" /> <polyline points="9 15 12 12 15 15" />
+      </svg></button> <button class="btn-icon-mobile" id="downloadImageBtnMobile" title="İndir">
+      <svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /> <polyline points="7 10 12 15 17 10" /> <line x1="12" y1="15" x2="12" y2="3" />
+      </svg></button>
+    </div>
+   </div>
+   <div class="main-content">
+    <div class="sidebar"><button class="btn btn-icon btn-primary" id="addPersonBtnSidebar" title="Kişi Ekle">
+      <svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /> <circle cx="8.5" cy="7" r="4" /> <line x1="20" y1="8" x2="20" y2="14" /> <line x1="23" y1="11" x2="17" y2="11" />
+      </svg><span class="tooltip">Kişi Ekle</span> </button> <button class="btn btn-icon btn-secondary" id="multiSelectBtnSidebar" title="Çoklu Seçim">
+      <svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" /> <rect x="14" y="3" width="7" height="7" /> <rect x="14" y="14" width="7" height="7" /> <rect x="3" y="14" width="7" height="7" />
+      </svg><span class="tooltip" id="multiSelectTooltip">Çoklu Seçim</span> </button> <button id="editPersonBtnSidebar" class="btn btn-icon btn-primary" style="display: none;" title="Düzenle">
+      <svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /> <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+      </svg><span class="tooltip">Düzenle</span> </button> <button id="deleteMultipleBtnSidebar" class="btn btn-icon btn-danger" style="display: none;" title="Seçilenleri Sil">
+      <svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6" /> <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /> <line x1="10" y1="11" x2="10" y2="17" /> <line x1="14" y1="11" x2="14" y2="17" />
+      </svg><span class="tooltip">Seçilenleri Sil</span> </button> <button class="btn btn-icon" id="clearSelectionBtnSidebar" title="Seçimi Temizle">
+      <svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18" /> <line x1="6" y1="6" x2="18" y2="18" />
+      </svg><span class="tooltip">Seçimi Temizle</span> </button>
+     <div style="height: 1px; background: #dee2e6; margin: 8px 0;"></div><button class="btn btn-icon btn-primary" id="saveTreeBtnSidebar" title="Kaydet">
+      <svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" /> <polyline points="17 21 17 13 7 13 7 21" /> <polyline points="7 3 7 8 15 8" />
+      </svg><span class="tooltip">Kaydet</span> </button> <button class="btn btn-icon btn-secondary" id="loadTreeBtnSidebar" title="Yükle">
+      <svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /> <polyline points="14 2 14 8 20 8" /> <line x1="12" y1="18" x2="12" y2="12" /> <polyline points="9 15 12 12 15 15" />
+      </svg><span class="tooltip">Yükle</span> </button> <button class="btn btn-icon" id="downloadImageBtnSidebar" title="Görseli İndir">
+      <svg viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /> <polyline points="7 10 12 15 17 10" /> <line x1="12" y1="15" x2="12" y2="3" />
+      </svg><span class="tooltip">Görseli İndir</span> </button>
+    </div>
+    <div style="flex: 1; display: flex; flex-direction: column; min-width: 0;">
+     <div class="tree-container" id="treeContainer">
+      <div class="tree-canvas" id="treeCanvas">
+       <svg class="connection-line" id="svgConnections"></svg>
+      </div>
+     </div>
+    </div>
+   </div>
+  </div>
+  <div id="addPersonModal" class="modal">
+   <div class="modal-content">
+    <div class="modal-header">
+     <h2 id="modalTitle">Yeni Kişi Ekle</h2><button class="close-btn" id="closeModalBtn">×</button>
+    </div>
+    <form id="addPersonForm">
+     <div class="form-group"><label for="personName">İsim *</label> <input type="text" id="personName" required>
+     </div>
+     <div class="form-group"><label for="personGender">Cinsiyet *</label> <select id="personGender" required> <option value="">Seçiniz</option> <option value="erkek">Erkek</option> <option value="kadin">Kadın</option> </select>
+     </div>
+     <div class="form-group"><label for="personBirthYear">Doğum Yılı</label> <input type="number" id="personBirthYear" min="1900" max="2024">
+     </div>
+     <div class="form-group"><label for="personNotes">Notlar</label> <textarea id="personNotes" rows="3"></textarea>
+     </div><button type="submit" class="btn btn-primary btn-full-width">Kaydet</button>
+    </form>
+   </div>
+  </div>
+  <div id="relationshipModal" class="modal">
+   <div class="modal-content">
+    <div class="modal-header">
+     <h2>Bağlantı Türü Seçin</h2><button class="close-btn" id="closeRelModalBtn">×</button>
+    </div>
+    <div style="padding: 20px 0;">
+     <div id="existingRelationshipInfo" class="existing-relationship-info" style="display: none;"></div><button class="btn btn-primary btn-full-width" id="spouseBtn"> <span id="person1NameSpouse"></span> ve <span id="person2NameSpouse"></span> Eş </button>
+     <div class="parent-box">
+      <div class="parent-question"><strong><span id="person2NameQuestion"></span></strong>, <strong><span id="person1NameQuestion"></span></strong>'in nesi oluyor?
+      </div><button class="btn btn-primary btn-full-width" id="parentChildBtn"> Çocuğu </button> <button class="btn btn-primary btn-full-width" id="childParentBtn" style="margin-bottom: 0;"> Anne/Babası </button>
+     </div><button class="btn btn-primary btn-full-width" id="siblingBtn"> <span id="person1NameSibling"></span> ve <span id="person2NameSibling"></span> Kardeş </button> <button id="deleteRelationshipBtn" class="btn btn-danger btn-full-width" style="display: none;"> Mevcut Bağı Sil </button> <button class="btn btn-secondary btn-full-width" id="cancelRelBtn" style="margin-bottom: 0;"> İptal </button>
+    </div>
+   </div>
+  </div>
+  <div id="loadHistoryModal" class="modal">
+   <div class="modal-content">
+    <div class="modal-header">
+     <h2>Kayıtlı Soy Ağaçları</h2><button class="close-btn" id="closeLoadModalBtn">×</button>
+    </div>
+    <div id="historyList" class="history-list"></div>
+   </div>
+  </div>
+  <div id="personInfoModal" class="modal">
+   <div class="modal-content">
+    <div class="modal-header">
+     <h2 id="infoModalName">Kişi Bilgileri</h2><button class="close-btn" id="closeInfoModalBtn">×</button>
+    </div>
+    <div style="padding: 20px 0;">
+     <div class="form-group"><label>İsim:</label>
+      <div id="infoName" style="padding: 12px; background: #f8f9fa; border-radius: 8px; font-weight: 600;"></div>
+     </div>
+     <div class="form-group"><label>Cinsiyet:</label>
+      <div id="infoGender" style="padding: 12px; background: #f8f9fa; border-radius: 8px;"></div>
+     </div>
+     <div class="form-group"><label>Doğum Yılı:</label>
+      <div id="infoBirthYear" style="padding: 12px; background: #f8f9fa; border-radius: 8px;"></div>
+     </div>
+     <div class="form-group"><label>Notlar:</label>
+      <div id="infoNotes" style="padding: 12px; background: #f8f9fa; border-radius: 8px; min-height: 60px; white-space: pre-wrap;"></div>
+     </div><button class="btn btn-primary btn-full-width" id="editFromInfoBtn">Düzenle</button>
+    </div>
+   </div>
+  </div>
+  <div id="toast" class="toast"></div>
+  <script>
+    const CARD_WIDTH = 120;
+    const CARD_HEIGHT = 80;
+    const STORAGE_KEY = 'familyTreeData';
+    const HISTORY_KEY = 'familyTreeHistory';
+    const MAX_HISTORY = 5;
+
+    let people = [
+      { id: 1, name: 'Mehmet', gender: 'erkek', birthYear: 1950, notes: '', x: 10000, y: 10000, spouse: 2, parents: [], siblings: [] },
+      { id: 2, name: 'Ayşe', gender: 'kadin', birthYear: 1952, notes: '', x: 10200, y: 10000, spouse: 1, parents: [], siblings: [] },
+      { id: 3, name: 'Ahmet', gender: 'erkek', birthYear: 1975, notes: '', x: 10100, y: 10200, spouse: null, parents: [1, 2], siblings: [] }
+    ];
+
+    let selectedPerson = null;
+    let connectingPerson = null;
+    let draggedPerson = null;
+    let dragOffset = { x: 0, y: 0 };
+    let tempRelationship = { person1: null, person2: null };
+    let multiSelectMode = false;
+    let selectedPeople = new Set();
+    let draggedGroup = null;
+    let dragInitialPositions = null;
+    let editingPersonId = null;
+
+    // Zoom variables
+    let currentScale = 1;
+    let currentTranslateX = 0;
+    let currentTranslateY = 0;
+    let lastTouchDistance = 0;
+    let isPinching = false;
+    let lastTouchCenter = { x: 0, y: 0 };
+
+    // Grid panning variables
+    let isGridDragging = false;
+    let gridDragStartX = 0;
+    let gridDragStartY = 0;
+    let gridDragStartTranslateX = 0;
+    let gridDragStartTranslateY = 0;
+
+    // LocalStorage Functions
+    function saveToLocalStorage() {
+      try {
+        const data = {
+          people: people,
+          timestamp: new Date().toISOString(),
+          version: '1.0'
+        };
+        
+        // Mevcut kaydı history'e ekle
+        saveToHistory(data);
+        
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        showToast('✅ Soy ağacı kaydedildi!');
+        return true;
+      } catch (error) {
+        showToast('❌ Kaydetme hatası: ' + error.message, true);
+        return false;
+      }
+    }
+
+    function saveToHistory(data) {
+      try {
+        let history = [];
+        const historyData = localStorage.getItem(HISTORY_KEY);
+        
+        if (historyData) {
+          history = JSON.parse(historyData);
+        }
+        
+        // Yeni kaydı başa ekle
+        history.unshift(data);
+        
+        // Maksimum 5 kayıt tut
+        if (history.length > MAX_HISTORY) {
+          history = history.slice(0, MAX_HISTORY);
+        }
+        
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+      } catch (error) {
+        console.error('History kaydetme hatas����:', error);
+      }
+    }
+
+    function loadFromHistory(index) {
+      try {
+        const historyData = localStorage.getItem(HISTORY_KEY);
+        if (!historyData) {
+          showToast('Kayıt bulunamadı', true);
+          return false;
+        }
+
+        const history = JSON.parse(historyData);
+        if (index < 0 || index >= history.length) {
+          showToast('Geçersiz kayıt', true);
+          return false;
+        }
+
+        const data = history[index];
+        people = data.people;
+        
+        const savedDate = new Date(data.timestamp);
+        const dateStr = savedDate.toLocaleDateString('tr-TR') + ' ' + savedDate.toLocaleTimeString('tr-TR');
+        
+        closeLoadHistoryModal();
+        renderTree();
+        showToast('����� Soy ağacı yüklendi! (' + dateStr + ')');
+        return true;
+      } catch (error) {
+        showToast('❌ Yükleme hatası: ' + error.message, true);
+        return false;
+      }
+    }
+
+    function showLoadHistoryModal() {
+      try {
+        const historyData = localStorage.getItem(HISTORY_KEY);
+        const historyList = document.getElementById('historyList');
+        
+        if (!historyData) {
+          historyList.innerHTML = '<div class="no-history">📂 Henüz kaydedilmiş soy ağacı yok</div>';
+          document.getElementById('loadHistoryModal').classList.add('active');
+          return;
+        }
+
+        const history = JSON.parse(historyData);
+        
+        if (history.length === 0) {
+          historyList.innerHTML = '<div class="no-history">📂 Henüz kaydedilmiş soy ağacı yok</div>';
+          document.getElementById('loadHistoryModal').classList.add('active');
+          return;
+        }
+
+        let html = '';
+        history.forEach((item, index) => {
+          const date = new Date(item.timestamp);
+          const dateStr = date.toLocaleDateString('tr-TR', { 
+            day: '2-digit', 
+            month: '2-digit', 
+            year: 'numeric' 
+          });
+          const timeStr = date.toLocaleTimeString('tr-TR', { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+          });
+          const personCount = item.people ? item.people.length : 0;
+          
+          html += `
+            <div class="history-item" onclick="loadFromHistory(${index})">
+              <div class="history-item-date">📅 ${dateStr} - ${timeStr}</div>
+              <div class="history-item-info">👥 ${personCount} kişi</div>
+            </div>
+          `;
+        });
+
+        historyList.innerHTML = html;
+        document.getElementById('loadHistoryModal').classList.add('active');
+      } catch (error) {
+        showToast('❌ Kayıtlar yüklenemedi: ' + error.message, true);
+      }
+    }
+
+    function closeLoadHistoryModal() {
+      document.getElementById('loadHistoryModal').classList.remove('active');
+    }
+
+    function showPersonInfo(person) {
+      document.getElementById('infoModalName').textContent = person.name;
+      document.getElementById('infoName').textContent = person.name;
+      document.getElementById('infoGender').textContent = person.gender === 'erkek' ? '👨 Erkek' : '👩 Kadın';
+      document.getElementById('infoBirthYear').textContent = person.birthYear ? person.birthYear : 'Belirtilmemiş';
+      document.getElementById('infoNotes').textContent = person.notes || 'Not yok';
+      
+      const editBtn = document.getElementById('editFromInfoBtn');
+      editBtn.onclick = function() {
+        closePersonInfoModal();
+        editPerson(person.id);
+      };
+      
+      document.getElementById('personInfoModal').classList.add('active');
+    }
+
+    function closePersonInfoModal() {
+      document.getElementById('personInfoModal').classList.remove('active');
+    }
+
+    function showToast(message, isError = false) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.className = 'toast active' + (isError ? ' error' : '');
+      
+      setTimeout(() => {
+        toast.classList.remove('active');
+      }, 3000);
+    }
+
+    function renderTree() {
+      const canvas = document.getElementById('treeCanvas');
+      const svg = document.getElementById('svgConnections');
+      
+      // Kartları temizle ama SVG'yi temizleme
+      const cards = canvas.querySelectorAll('.person-node');
+      cards.forEach(card => card.remove());
+      
+      svg.innerHTML = '';
+
+      // Calculate bounds needed for all people
+      let minX = 0;
+      let minY = 0;
+      let maxX = 1200;
+      let maxY = 800;
+      
+      people.forEach(person => {
+        minX = Math.min(minX, person.x - CARD_WIDTH / 2);
+        minY = Math.min(minY, person.y - CARD_HEIGHT / 2);
+        maxX = Math.max(maxX, person.x + CARD_WIDTH / 2);
+        maxY = Math.max(maxY, person.y + CARD_HEIGHT / 2);
+      });
+
+      // Add dynamic padding (2-3x the distance from edge)
+      const dynamicPadding = 600; // 2-3 kat mesafe için bolca alan
+      minX -= dynamicPadding;
+      minY -= dynamicPadding;
+      maxX += dynamicPadding;
+      maxY += dynamicPadding;
+      
+      const canvasWidth = maxX - minX;
+      const canvasHeight = maxY - minY;
+
+      // Set canvas and SVG dimensions
+      canvas.style.minWidth = canvasWidth + 'px';
+      canvas.style.minHeight = canvasHeight + 'px';
+      svg.setAttribute('width', canvasWidth);
+      svg.setAttribute('height', canvasHeight);
+      svg.style.width = canvasWidth + 'px';
+      svg.style.height = canvasHeight + 'px';
+
+      // Apply zoom transform
+      applyZoomTransform();
+
+      drawConnections(minX, minY);
+
+      people.forEach(person => {
+        const node = createPersonNode(person, minX, minY);
+        canvas.appendChild(node);
+      });
+    }
+
+    // Zoom functions
+    function applyZoomTransform() {
+      const canvas = document.getElementById('treeCanvas');
+      
+      canvas.style.transform = `scale(${currentScale}) translate(${currentTranslateX}px, ${currentTranslateY}px)`;
+      canvas.style.transformOrigin = '0 0';
+      canvas.style.transition = 'transform 0.3s ease-out';
+      
+      // Grid'i zoom seviyesine göre göster/gizle
+      // 1.0'dan küç��kse (zoom out) grid'i gizle
+      if (currentScale < 1.0) {
+        canvas.classList.add('zoomed-out');
+        canvas.classList.remove('zoomed-in');
+      } else {
+        canvas.classList.add('zoomed-in');
+        canvas.classList.remove('zoomed-out');
+      }
+    }
+
+    function getTouchDistance(touch1, touch2) {
+      const dx = touch1.clientX - touch2.clientX;
+      const dy = touch1.clientY - touch2.clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function getTouchCenter(touch1, touch2) {
+      return {
+        x: (touch1.clientX + touch2.clientX) / 2,
+        y: (touch1.clientY + touch2.clientY) / 2
+      };
+    }
+
+    // Add pinch zoom handlers to tree container
+    const treeContainer = document.getElementById('treeContainer');
+    
+    // Grid panning with mouse
+    treeContainer.addEventListener('mousedown', function(e) {
+      // Sadece boş alana tıklandığında grid'i sürükle
+      if (e.target === treeContainer || e.target.id === 'treeCanvas' || e.target.id === 'svgConnections') {
+        isGridDragging = true;
+        gridDragStartX = e.clientX;
+        gridDragStartY = e.clientY;
+        gridDragStartTranslateX = currentTranslateX;
+        gridDragStartTranslateY = currentTranslateY;
+        treeContainer.classList.add('dragging');
+        e.preventDefault();
+      }
+    });
+
+    document.addEventListener('mousemove', function(e) {
+      if (isGridDragging) {
+        const deltaX = e.clientX - gridDragStartX;
+        const deltaY = e.clientY - gridDragStartY;
+        
+        currentTranslateX = gridDragStartTranslateX + deltaX / currentScale;
+        currentTranslateY = gridDragStartTranslateY + deltaY / currentScale;
+        
+        applyZoomTransform();
+        e.preventDefault();
+      }
+    });
+
+    document.addEventListener('mouseup', function(e) {
+      if (isGridDragging) {
+        isGridDragging = false;
+        treeContainer.classList.remove('dragging');
+      }
+    });
+
+    // Desktop mouse wheel zoom with smooth animation
+    let zoomTimeout = null;
+    let accumulatedDelta = 0;
+    
+    treeContainer.addEventListener('wheel', function(e) {
+      e.preventDefault();
+      
+      // Accumulate scroll delta for smoother zoom
+      accumulatedDelta += e.deltaY;
+      
+      // Clear previous timeout
+      if (zoomTimeout) {
+        clearTimeout(zoomTimeout);
+      }
+      
+      // Debounce zoom updates for smoother experience
+      zoomTimeout = setTimeout(() => {
+        const delta = accumulatedDelta > 0 ? 0.80 : 1.20; // Bigger steps for faster zoom
+        const newScale = Math.max(0.5, Math.min(3, currentScale * delta));
+        
+        // Calculate zoom center point relative to container
+        const containerRect = treeContainer.getBoundingClientRect();
+        const mouseX = e.clientX - containerRect.left;
+        const mouseY = e.clientY - containerRect.top;
+        
+        // Adjust translation to zoom towards mouse position
+        const scaleDiff = newScale - currentScale;
+        currentTranslateX -= (mouseX / currentScale) * scaleDiff / newScale;
+        currentTranslateY -= (mouseY / currentScale) * scaleDiff / newScale;
+        
+        currentScale = newScale;
+        applyZoomTransform();
+        
+        accumulatedDelta = 0;
+      }, 10); // Small delay for accumulation
+    }, { passive: false });
+    
+    treeContainer.addEventListener('touchstart', function(e) {
+      if (e.touches.length === 2) {
+        // Çoklu seçim modunda zoom'u devre dışı bırak
+        if (multiSelectMode) {
+          e.preventDefault();
+          return;
+        }
+        
+        isPinching = true;
+        isGridDragging = false;
+        lastTouchDistance = getTouchDistance(e.touches[0], e.touches[1]);
+        lastTouchCenter = getTouchCenter(e.touches[0], e.touches[1]);
+        e.preventDefault();
+      } else if (e.touches.length === 1) {
+        // Tek parmak - sadece grid'e dokunulursa pan başlat
+        const touch = e.touches[0];
+        if (e.target === treeContainer || e.target.id === 'treeCanvas' || e.target.id === 'svgConnections') {
+          isGridDragging = true;
+          gridDragStartX = touch.clientX;
+          gridDragStartY = touch.clientY;
+          gridDragStartTranslateX = currentTranslateX;
+          gridDragStartTranslateY = currentTranslateY;
+          e.preventDefault();
+        }
+      }
+    }, { passive: false });
+
+    treeContainer.addEventListener('touchmove', function(e) {
+      if (isPinching && e.touches.length === 2) {
+        e.preventDefault();
+        
+        const currentDistance = getTouchDistance(e.touches[0], e.touches[1]);
+        const currentCenter = getTouchCenter(e.touches[0], e.touches[1]);
+        
+        // Calculate scale change
+        const scaleChange = currentDistance / lastTouchDistance;
+        const newScale = Math.max(0.5, Math.min(3, currentScale * scaleChange));
+        
+        // Calculate translation to keep zoom centered
+        const containerRect = treeContainer.getBoundingClientRect();
+        const centerX = currentCenter.x - containerRect.left;
+        const centerY = currentCenter.y - containerRect.top;
+        
+        const scaleDiff = newScale - currentScale;
+        currentTranslateX -= (centerX / currentScale) * scaleDiff / newScale;
+        currentTranslateY -= (centerY / currentScale) * scaleDiff / newScale;
+        
+        currentScale = newScale;
+        lastTouchDistance = currentDistance;
+        lastTouchCenter = currentCenter;
+        
+        applyZoomTransform();
+      } else if (isGridDragging && e.touches.length === 1) {
+        // Tek parmak kaydırma
+        e.preventDefault();
+        const touch = e.touches[0];
+        const deltaX = touch.clientX - gridDragStartX;
+        const deltaY = touch.clientY - gridDragStartY;
+        
+        currentTranslateX = gridDragStartTranslateX + deltaX / currentScale;
+        currentTranslateY = gridDragStartTranslateY + deltaY / currentScale;
+        
+        applyZoomTransform();
+      }
+    }, { passive: false });
+
+    treeContainer.addEventListener('touchend', function(e) {
+      if (e.touches.length < 2) {
+        isPinching = false;
+        lastTouchDistance = 0;
+      }
+      if (e.touches.length === 0) {
+        isGridDragging = false;
+      }
+    });
+
+    function drawConnections(offsetX, offsetY) {
+      // Önce ebeveyn-çocuk bağlantılarını çiz
+      const processedParentGroups = new Set();
+      people.forEach(child => {
+        if (child.parents && child.parents.length > 0) {
+          const parentKey = [...child.parents].sort().join('-');
+          
+          if (!processedParentGroups.has(parentKey)) {
+            const children = people.filter(p => {
+              if (!p.parents || p.parents.length === 0) return false;
+              const pKey = [...p.parents].sort().join('-');
+              return pKey === parentKey;
+            });
+            
+            drawParentToChildrenConnection(child.parents, children, offsetX, offsetY);
+            processedParentGroups.add(parentKey);
+          }
+        }
+      });
+      
+      // Sonra eş bağlantılarını çiz
+      const drawnSpouses = new Set();
+      people.forEach(person => {
+        if (person.spouse && !drawnSpouses.has(person.id + '-' + person.spouse) && !drawnSpouses.has(person.spouse + '-' + person.id)) {
+          const spouse = people.find(p => p.id === person.spouse);
+          if (spouse) {
+            drawSpouseConnection(person, spouse, offsetX, offsetY);
+            drawnSpouses.add(person.id + '-' + person.spouse);
+          }
+        }
+      });
+      
+      // En son kardeş bağlantılarını çiz
+      const processedSiblingGroups = new Set();
+      people.forEach(person => {
+        if (person.siblings && person.siblings.length > 0) {
+          const siblingGroupIds = new Set([person.id, ...person.siblings]);
+          const groupKey = [...siblingGroupIds].sort().join('-');
+          
+          if (!processedSiblingGroups.has(groupKey)) {
+            const siblingGroup = people.filter(p => siblingGroupIds.has(p.id));
+            drawSiblingConnection(siblingGroup, offsetX, offsetY);
+            processedSiblingGroups.add(groupKey);
+          }
+        }
+      });
+    }
+
+    function drawSpouseConnection(person1, person2, offsetX, offsetY) {
+      const centerX1 = person1.x - offsetX;
+      const centerY1 = person1.y - offsetY;
+      const centerX2 = person2.x - offsetX;
+      const centerY2 = person2.y - offsetY;
+      
+      const horizontalOffset = 0;
+      const verticalOffset = CARD_HEIGHT / 2 + 70;
+      const verticalStartOffset = CARD_HEIGHT / 2 + 20;
+      
+      const connectionY = Math.max(centerY1, centerY2) + verticalOffset;
+      
+      drawSVGLine(centerX1 + horizontalOffset, centerY1 + verticalStartOffset, centerX1 + horizontalOffset, connectionY, '#f97316', 3);
+      drawSVGLine(centerX2 + horizontalOffset, centerY2 + verticalStartOffset, centerX2 + horizontalOffset, connectionY, '#f97316', 3);
+      drawSVGLine(centerX1 + horizontalOffset, connectionY, centerX2 + horizontalOffset, connectionY, '#f97316', 3);
+    }
+
+    function drawSiblingConnection(siblingGroup, offsetX, offsetY) {
+      if (!siblingGroup || siblingGroup.length < 2) return;
+      
+      const firstSibling = siblingGroup[0];
+      const hasParents = firstSibling.parents && firstSibling.parents.length > 0;
+      
+      const minY = Math.min(...siblingGroup.map(s => s.y));
+      const maxY = Math.max(...siblingGroup.map(s => s.y));
+      const minX = Math.min(...siblingGroup.map(s => s.x));
+      const maxX = Math.max(...siblingGroup.map(s => s.x));
+      
+      const verticalSpread = maxY - minY;
+      const horizontalSpread = maxX - minX;
+      
+      // Yatay düzenlemede - eski mantık
+      if (verticalSpread <= horizontalSpread) {
+        const horizontalOffset = 0;
+        let connectionY;
+        
+        if (hasParents) {
+          const childrenAvgY = siblingGroup.reduce((sum, s) => sum + s.y, 0) / siblingGroup.length;
+          connectionY = childrenAvgY - CARD_HEIGHT / 2 - 20 - offsetY;
+        } else {
+          connectionY = minY - CARD_HEIGHT / 2 - 50 - offsetY;
+        }
+        
+        siblingGroup.forEach(sibling => {
+          const cardTop = sibling.y - CARD_HEIGHT / 2 - offsetY;
+          drawSVGLine(sibling.x + horizontalOffset - offsetX, cardTop, sibling.x + horizontalOffset - offsetX, connectionY, '#3b82f6', 3);
+        });
+        
+        // Sadece mavi yatay çizgiyi çiziyoruz
+        drawSVGLine(minX + horizontalOffset - offsetX, connectionY, maxX + horizontalOffset - offsetX, connectionY, '#3b82f6', 3);
+      } else {
+        // Dikey düzenleme - SADECE tam alt alta ise bağla
+        siblingGroup.sort((a, b) => a.y - b.y);
+        
+        for (let i = 0; i < siblingGroup.length - 1; i++) {
+          const sibling1 = siblingGroup[i];
+          const sibling2 = siblingGroup[i + 1];
+          
+          // X koordinatları tam aynı mı kontrol et (tam alt alta)
+          if (Math.abs(sibling1.x - sibling2.x) === 0) {
+            // Kartın merkezinde çizgi
+            const lineX = sibling1.x - offsetX;
+            const y1 = sibling1.y + 60 - offsetY;
+            const y2 = sibling2.y + 60 - offsetY;
+            
+            drawSVGLine(lineX, y1, lineX, y2, '#3b82f6', 3, '', 50);
+          }
+        }
+      }
+    }
+
+    function drawParentToChildrenConnection(parentIds, children, offsetX, offsetY) {
+      if (!parentIds || parentIds.length === 0 || !children || children.length === 0) return;
+      
+      const parents = parentIds.map(id => people.find(p => p.id === id)).filter(Boolean);
+      if (parents.length === 0) return;
+      
+      // Kesik çizgi SADECE: 1 ebeveyn VAR ve o ebeveynin EŞİ de VAR (ama eş çocuğun ebeveyni değil)
+      let isDashed = false;
+      if (parents.length === 1) {
+        const singleParent = parents[0];
+        if (singleParent.spouse) {
+          // Eşin bu çocuğun ebeveyni olup olmadığını kontrol et
+          const spouse = people.find(p => p.id === singleParent.spouse);
+          if (spouse) {
+            // Çocukların hiçbirinin ebeveynleri arasında eş yoksa kesik çizgi
+            const spouseIsParent = children.some(child => 
+              child.parents && child.parents.includes(spouse.id)
+            );
+            isDashed = !spouseIsParent;
+          }
+        }
+      }
+      const dashArray = isDashed ? '5,5' : '';
+      
+      const horizontalOffset = 0;
+      const greenHorizontalOffset = 0;
+      
+      const maxParentY = Math.max(...parents.map(p => p.y));
+      
+      const parent1 = parents[0];
+      const parent2 = parents.length > 1 ? parents[1] : parent1;
+      const spouseConnectionMidX = ((parent1.x + parent2.x) / 2) + horizontalOffset - offsetX;
+      
+      const parentConnectionY = maxParentY + CARD_HEIGHT / 2 + 70 - offsetY;
+      
+      // Kardeşlik çizgisi var mı kontrol et
+      const firstChild = children[0];
+      const hasSiblings = firstChild.siblings && firstChild.siblings.length > 0;
+      
+      let childConnectionY;
+      let greenLineX;
+      
+      if (hasSiblings) {
+        // Kardeşler varsa: Mavi yatay çizginin Y konumunu kullan
+        const childrenAvgY = children.reduce((sum, c) => sum + c.y, 0) / children.length;
+        childConnectionY = childrenAvgY - CARD_HEIGHT / 2 - 20 - offsetY; // mavi çizgi ile aynı
+        
+        // Yeşil dikey çizgiyi mavi çizginin ortasına yerleştir
+        const minChildX = Math.min(...children.map(c => c.x));
+        const maxChildX = Math.max(...children.map(c => c.x));
+        greenLineX = ((minChildX + maxChildX) / 2) + greenHorizontalOffset - offsetX;
+      } else {
+        // Kardeş yoksa: Eski mantığı kullan
+        const childrenAvgX = children.reduce((sum, c) => sum + c.x, 0) / children.length;
+        const childrenAvgY = children.reduce((sum, c) => sum + c.y, 0) / children.length;
+        greenLineX = childrenAvgX + greenHorizontalOffset - offsetX;
+        childConnectionY = childrenAvgY - CARD_HEIGHT / 2 - 70 - offsetY;
+      }
+      
+      const safeChildConnectionY = childConnectionY;
+      
+      drawSVGLine(spouseConnectionMidX, parentConnectionY, spouseConnectionMidX, safeChildConnectionY, '#10b981', 3, dashArray);
+      drawSVGLine(spouseConnectionMidX, safeChildConnectionY, greenLineX, safeChildConnectionY, '#10b981', 3, dashArray);
+      
+      // Çocuklara bağlanan dikey çizgileri her zaman çiz
+      children.forEach(child => {
+        const cardTop = child.y - CARD_HEIGHT / 2 - offsetY;
+        drawSVGLine(child.x + greenHorizontalOffset - offsetX, safeChildConnectionY, child.x + greenHorizontalOffset - offsetX, cardTop, '#10b981', 3, dashArray);
+      });
+    }
+
+    function drawSVGLine(x1, y1, x2, y2, color, width, dashArray = '', zIndex = 1) {
+      const svg = document.getElementById('svgConnections');
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      
+      line.setAttribute('x1', x1);
+      line.setAttribute('y1', y1);
+      line.setAttribute('x2', x2);
+      line.setAttribute('y2', y2);
+      line.setAttribute('stroke', color);
+      line.setAttribute('stroke-width', width);
+      line.style.zIndex = zIndex;
+      if (dashArray) {
+        line.setAttribute('stroke-dasharray', dashArray);
+      }
+      
+      svg.appendChild(line);
+    }
+
+    function handlePersonClick(person) {
+      if (multiSelectMode) {
+        if (selectedPeople.has(person.id)) {
+          selectedPeople.delete(person.id);
+          showToast(person.name + ' seçimden çıkarıldı');
+        } else {
+          selectedPeople.add(person.id);
+          showToast(person.name + ' seçildi (' + selectedPeople.size + ' kişi)');
+        }
+        
+        const deleteBtnSidebar = document.getElementById('deleteMultipleBtnSidebar');
+        const deleteBtnMobile = document.getElementById('deleteMultipleBtnMobile');
+        const editBtnSidebar = document.getElementById('editPersonBtnSidebar');
+        const editBtnMobile = document.getElementById('editPersonBtnMobile');
+        
+        const showDelete = selectedPeople.size > 0 ? 'inline-block' : 'none';
+        const showEdit = selectedPeople.size === 1 ? 'inline-block' : 'none';
+        
+        deleteBtnSidebar.style.display = showDelete;
+        if (deleteBtnMobile) deleteBtnMobile.style.display = showDelete;
+        editBtnSidebar.style.display = showEdit;
+        if (editBtnMobile) editBtnMobile.style.display = showEdit;
+        
+        renderTree();
+        return;
+      }
+      
+      if (connectingPerson) {
+        if (connectingPerson.id === person.id) {
+          connectingPerson = null;
+          showToast('Bağlantı modu iptal edildi');
+        } else {
+          showRelationshipModal(connectingPerson, person);
+        }
+        renderTree();
+      } else {
+        connectingPerson = person;
+        selectedPerson = null;
+        showToast(person.name + ' seçildi! Bağlanacak kişiye tıklayın...');
+        renderTree();
+      }
+    }
+
+    function createPersonNode(person, offsetX, offsetY) {
+      const node = document.createElement('div');
+      node.className = 'person-node ' + (person.gender === 'erkek' ? 'male' : 'female');
+      
+      if (selectedPerson && selectedPerson.id === person.id) {
+        node.classList.add('selected');
+      }
+      if (connectingPerson && connectingPerson.id === person.id) {
+        node.classList.add('connecting');
+      }
+      if (multiSelectMode && selectedPeople.has(person.id)) {
+        node.classList.add('multi-selected');
+      }
+
+      node.style.left = (person.x - CARD_WIDTH / 2 - offsetX) + 'px';
+      node.style.top = (person.y - CARD_HEIGHT / 2 - offsetY) + 'px';
+
+      node.innerHTML = `
+        <div class="person-name">${person.name}</div>
+        <div style="margin-top: 8px;">
+          <span class="info-icon" data-person-id="${person.id}">
+            <svg viewBox="0 0 24 24" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="16" x2="12" y2="12"/>
+              <line x1="12" y1="8" x2="12.01" y2="8"/>
+            </svg>
+          </span>
+        </div>
+      `;
+
+      // Info icon click handler
+      const infoIcon = node.querySelector('.info-icon');
+      infoIcon.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showPersonInfo(person);
+      });
+
+      let dragStartTime = 0;
+      let dragStartPos = { x: 0, y: 0 };
+      let hasMoved = false;
+
+      // Mouse events
+      node.addEventListener('mousedown', (e) => {
+        if (e.target.tagName === 'BUTTON') return;
+        dragStartTime = Date.now();
+        dragStartPos = { x: e.clientX, y: e.clientY };
+        hasMoved = false;
+        startDrag(e, person);
+      });
+
+      node.addEventListener('click', (e) => {
+        if (e.target.tagName === 'BUTTON') return;
+        
+        const clickDuration = Date.now() - dragStartTime;
+        const distance = Math.sqrt(
+          Math.pow(e.clientX - dragStartPos.x, 2) + 
+          Math.pow(e.clientY - dragStartPos.y, 2)
+        );
+        
+        if (clickDuration < 300 && distance < 10 && !hasMoved) {
+          handlePersonClick(person);
+        }
+        e.stopPropagation();
+      });
+
+      // Touch events for mobile - IMPROVED
+      let touchStartTime = 0;
+      let touchHasMoved = false;
+      let touchStartPosition = { x: 0, y: 0 };
+      
+      node.addEventListener('touchstart', (e) => {
+        if (e.target.tagName === 'BUTTON') return;
+        
+        const touch = e.touches[0];
+        touchStartTime = Date.now();
+        touchHasMoved = false;
+        touchStartPosition = { x: touch.clientX, y: touch.clientY };
+        
+        // Mobilde seçim modu aktifse sürüklemeye izin ver
+        const isMobile = window.innerWidth < 768;
+        if (isMobile && !multiSelectMode) {
+          // Seçim modu kapalıysa sadece tıklama için izin ver, sür��kleme yok
+          return;
+        }
+        
+        // Masaüstünde veya seçim modu açıksa sürüklemeyi başlat
+        startDragTouch(touch, person);
+        e.preventDefault();
+      }, { passive: false });
+
+      node.addEventListener('touchmove', (e) => {
+        if (e.target.tagName === 'BUTTON') return;
+        
+        const touch = e.touches[0];
+        const distance = Math.sqrt(
+          Math.pow(touch.clientX - touchStartPosition.x, 2) + 
+          Math.pow(touch.clientY - touchStartPosition.y, 2)
+        );
+        
+        // 10 pikselden fazla hareket = sürükleme
+        if (distance > 10) {
+          touchHasMoved = true;
+        }
+      }, { passive: false });
+
+      node.addEventListener('touchend', (e) => {
+        if (e.target.tagName === 'BUTTON') return;
+        
+        const touchDuration = Date.now() - touchStartTime;
+        
+        // Kısa dokunma ve az hareket = seçim/bağlantı
+        if (touchDuration < 300 && !touchHasMoved) {
+          handlePersonClick(person);
+        }
+        
+        stopDragTouch();
+        e.preventDefault();
+      });
+
+      return node;
+    }
+
+    function startDrag(e, person) {
+      draggedPerson = person;
+      
+      // Grid sürüklemesini devre dışı bırak
+      isGridDragging = false;
+      
+      // Mouse + canvas transform = doğru konum
+      const canvas = document.getElementById('treeCanvas');
+      const rect = canvas.getBoundingClientRect();
+      
+      const mouseXInCanvas = (e.clientX - rect.left) / currentScale - currentTranslateX;
+      const mouseYInCanvas = (e.clientY - rect.top) / currentScale - currentTranslateY;
+      
+      dragOffset.x = mouseXInCanvas - person.x;
+      dragOffset.y = mouseYInCanvas - person.y;
+
+      if (multiSelectMode && selectedPeople.has(person.id)) {
+        draggedGroup = Array.from(selectedPeople).map(id => people.find(p => p.id === id)).filter(Boolean);
+        
+        dragInitialPositions = {};
+        draggedGroup.forEach(p => {
+          dragInitialPositions[p.id] = { x: p.x, y: p.y };
+        });
+        
+        dragOffset.refX = mouseXInCanvas - person.x;
+        dragOffset.refY = mouseYInCanvas - person.y;
+      } else {
+        draggedGroup = null;
+        dragInitialPositions = null;
+      }
+
+      document.addEventListener('mousemove', drag);
+      document.addEventListener('mouseup', stopDrag);
+    }
+
+    function startDragTouch(touch, person) {
+      draggedPerson = person;
+      
+      // Grid sürüklemesini devre dı��ı bırak
+      isGridDragging = false;
+      
+      const canvas = document.getElementById('treeCanvas');
+      const rect = canvas.getBoundingClientRect();
+      
+      const touchXInCanvas = (touch.clientX - rect.left) / currentScale - currentTranslateX;
+      const touchYInCanvas = (touch.clientY - rect.top) / currentScale - currentTranslateY;
+      
+      dragOffset.x = touchXInCanvas - person.x;
+      dragOffset.y = touchYInCanvas - person.y;
+
+      if (multiSelectMode && selectedPeople.has(person.id)) {
+        draggedGroup = Array.from(selectedPeople).map(id => people.find(p => p.id === id)).filter(Boolean);
+        
+        dragInitialPositions = {};
+        draggedGroup.forEach(p => {
+          dragInitialPositions[p.id] = { x: p.x, y: p.y };
+        });
+        
+        dragOffset.refX = touchXInCanvas - person.x;
+        dragOffset.refY = touchYInCanvas - person.y;
+      } else {
+        draggedGroup = null;
+        dragInitialPositions = null;
+      }
+
+      document.addEventListener('touchmove', dragTouch, { passive: false });
+      document.addEventListener('touchend', stopDragTouch);
+    }
+
+    function drag(e) {
+      if (!draggedPerson) return;
+      hasMoved = true;
+
+      const canvas = document.getElementById('treeCanvas');
+      const rect = canvas.getBoundingClientRect();
+      const gridSize = 20;
+
+      const mouseXInCanvas = (e.clientX - rect.left) / currentScale - currentTranslateX;
+      const mouseYInCanvas = (e.clientY - rect.top) / currentScale - currentTranslateY;
+
+      if (draggedGroup && draggedGroup.length > 0) {
+        const rawX = mouseXInCanvas - dragOffset.refX;
+        const rawY = mouseYInCanvas - dragOffset.refY;
+        
+        const newX = Math.round(rawX / gridSize) * gridSize;
+        const newY = Math.round(rawY / gridSize) * gridSize;
+        
+        const deltaX = newX - dragInitialPositions[draggedPerson.id].x;
+        const deltaY = newY - dragInitialPositions[draggedPerson.id].y;
+        
+        draggedGroup.forEach(p => {
+          const initialPos = dragInitialPositions[p.id];
+          p.x = initialPos.x + deltaX;
+          p.y = initialPos.y + deltaY;
+        });
+      } else {
+        const rawX = mouseXInCanvas - dragOffset.x;
+        const rawY = mouseYInCanvas - dragOffset.y;
+        
+        draggedPerson.x = Math.round(rawX / gridSize) * gridSize;
+        draggedPerson.y = Math.round(rawY / gridSize) * gridSize;
+      }
+
+      renderTree();
+    }
+
+    function dragTouch(e) {
+      if (!draggedPerson) return;
+      e.preventDefault();
+
+      const touch = e.touches[0];
+      const canvas = document.getElementById('treeCanvas');
+      const rect = canvas.getBoundingClientRect();
+      const gridSize = 20;
+
+      const touchXInCanvas = (touch.clientX - rect.left) / currentScale - currentTranslateX;
+      const touchYInCanvas = (touch.clientY - rect.top) / currentScale - currentTranslateY;
+
+      if (draggedGroup && draggedGroup.length > 0) {
+        const rawX = touchXInCanvas - dragOffset.refX;
+        const rawY = touchYInCanvas - dragOffset.refY;
+        
+        const newX = Math.round(rawX / gridSize) * gridSize;
+        const newY = Math.round(rawY / gridSize) * gridSize;
+        
+        const deltaX = newX - dragInitialPositions[draggedPerson.id].x;
+        const deltaY = newY - dragInitialPositions[draggedPerson.id].y;
+        
+        draggedGroup.forEach(p => {
+          const initialPos = dragInitialPositions[p.id];
+          p.x = initialPos.x + deltaX;
+          p.y = initialPos.y + deltaY;
+        });
+      } else {
+        const rawX = touchXInCanvas - dragOffset.x;
+        const rawY = touchYInCanvas - dragOffset.y;
+        
+        draggedPerson.x = Math.round(rawX / gridSize) * gridSize;
+        draggedPerson.y = Math.round(rawY / gridSize) * gridSize;
+      }
+
+      renderTree();
+    }
+
+    function stopDrag() {
+      draggedPerson = null;
+      draggedGroup = null;
+      dragInitialPositions = null;
+      document.removeEventListener('mousemove', drag);
+      document.removeEventListener('mouseup', stopDrag);
+    }
+
+    function stopDragTouch() {
+      draggedPerson = null;
+      draggedGroup = null;
+      dragInitialPositions = null;
+      document.removeEventListener('touchmove', dragTouch);
+      document.removeEventListener('touchend', stopDragTouch);
+    }
+
+    function editPerson(personId) {
+      const person = people.find(p => p.id === personId);
+      if (!person) return;
+
+      editingPersonId = personId;
+      document.getElementById('modalTitle').textContent = 'Kişiyi Düzenle';
+      document.getElementById('personName').value = person.name;
+      document.getElementById('personGender').value = person.gender;
+      document.getElementById('personBirthYear').value = person.birthYear || '';
+      document.getElementById('personNotes').value = person.notes || '';
+      
+      document.getElementById('addPersonModal').classList.add('active');
+    }
+
+    function deletePerson(personId, buttonElement) {
+      const person = people.find(p => p.id === personId);
+      if (!person) return;
+      
+      if (buttonElement.textContent.includes('Onayla')) {
+        if (person.spouse) {
+          const spouse = people.find(p => p.id === person.spouse);
+          if (spouse) spouse.spouse = null;
+        }
+
+        if (person.siblings) {
+          person.siblings.forEach(sibId => {
+            const sib = people.find(p => p.id === sibId);
+            if (sib) {
+              sib.siblings = sib.siblings.filter(s => s !== personId);
+            }
+          });
+        }
+
+        people.forEach(p => {
+          if (p.parents && p.parents.includes(personId)) {
+            p.parents = p.parents.filter(id => id !== personId);
+          }
+        });
+
+        people = people.filter(p => p.id !== personId);
+        
+        renderTree();
+        showToast(person.name + ' silindi!');
+      } else {
+        buttonElement.textContent = 'Onayla';
+        buttonElement.style.background = '#c53030';
+        setTimeout(() => {
+          buttonElement.textContent = 'Sil';
+          buttonElement.style.background = '#e53e3e';
+        }, 3000);
+      }
+    }
+
+    function getAllAncestors(personId) {
+      const ancestors = new Set();
+      const queue = [personId];
+      
+      while (queue.length > 0) {
+        const currentId = queue.shift();
+        const person = people.find(p => p.id === currentId);
+        
+        if (person && person.parents) {
+          person.parents.forEach(parentId => {
+            if (!ancestors.has(parentId)) {
+              ancestors.add(parentId);
+              queue.push(parentId);
+            }
+          });
+        }
+      }
+      
+      return ancestors;
+    }
+
+    function getAllDescendants(personId) {
+      const descendants = new Set();
+      const queue = [personId];
+      
+      while (queue.length > 0) {
+        const currentId = queue.shift();
+        people.forEach(person => {
+          if (person.parents && person.parents.includes(currentId) && !descendants.has(person.id)) {
+            descendants.add(person.id);
+            queue.push(person.id);
+          }
+        });
+      }
+      
+      return descendants;
+    }
+
+    function validateRelationship(person1, person2, type) {
+      if (person1.id === person2.id) {
+        return { valid: false, message: 'Bir kişi kendisiyle ilişkilendirilemez!' };
+      }
+
+      if (type === 'spouse') {
+        if (person1.gender === person2.gender) {
+          return { valid: false, message: 'Aynı cinsiyetten kişiler eş olamaz!' };
+        }
+      }
+
+      const ancestors1 = getAllAncestors(person1.id);
+      const descendants1 = getAllDescendants(person1.id);
+      const ancestors2 = getAllAncestors(person2.id);
+      const descendants2 = getAllDescendants(person2.id);
+
+      // KARDEŞ İLİŞKİSİ KONTROLLERI
+      if (type === 'sibling') {
+        // Direkt ata-torun kontrolleri
+        if (ancestors1.has(person2.id) || descendants1.has(person2.id)) {
+          return { valid: false, message: 'Farklı kuşaklardaki kişiler kardeş olamaz!' };
+        }
+        if (ancestors2.has(person1.id) || descendants2.has(person1.id)) {
+          return { valid: false, message: 'Farklı kuşaklardaki kişiler kardeş olamaz!' };
+        }
+        if (person1.spouse === person2.id) {
+          return { valid: false, message: 'Eşler kardeş olamaz!' };
+        }
+        
+        // ÜVEY BABA/ANNE KONTROLÜ
+        // Person1'in ebeveynlerinden biri Person2'nin eşi mi?
+        if (person1.parents) {
+          for (let parentId of person1.parents) {
+            const parent = people.find(p => p.id === parentId);
+            if (parent && parent.spouse === person2.id) {
+              return { valid: false, message: 'Üvey anne/baba ile üvey çocuk kardeş olamaz!' };
+            }
+          }
+        }
+        // Person2'nin ebeveynlerinden biri Person1'in eşi mi?
+        if (person2.parents) {
+          for (let parentId of person2.parents) {
+            const parent = people.find(p => p.id === parentId);
+            if (parent && parent.spouse === person1.id) {
+              return { valid: false, message: 'Üvey anne/baba ile üvey çocuk kardeş olamaz!' };
+            }
+          }
+        }
+        
+        // ÇAPRAZ KUŞAK: Dayı/Amca-Yeğen kontrolü
+        // Person1'in ebeveynleri Person2'nin kardeşi mi?
+        if (person1.parents) {
+          for (let parentId of person1.parents) {
+            const parent = people.find(p => p.id === parentId);
+            if (parent && parent.siblings && parent.siblings.includes(person2.id)) {
+              return { valid: false, message: 'Dayı/amca/teyze/hala ile yeğen kardeş olamaz!' };
+            }
+          }
+        }
+        // Person2'nin ebeveynleri Person1'in kardeşi mi?
+        if (person2.parents) {
+          for (let parentId of person2.parents) {
+            const parent = people.find(p => p.id === parentId);
+            if (parent && parent.siblings && parent.siblings.includes(person1.id)) {
+              return { valid: false, message: 'Dayı/amca/teyze/hala ile yeğen kardeş olamaz!' };
+            }
+          }
+        }
+        
+        // KUZEN KONTROLÜ: Kardeş çocukları kardeş olamaz
+        // Person1'in ebeveynleri ile Person2'nin ebeveynleri karde���� mi?
+        if (person1.parents && person1.parents.length > 0 && person2.parents && person2.parents.length > 0) {
+          for (let parent1Id of person1.parents) {
+            const parent1 = people.find(p => p.id === parent1Id);
+            if (parent1 && parent1.siblings) {
+              for (let parent2Id of person2.parents) {
+                if (parent1.siblings.includes(parent2Id)) {
+                  return { valid: false, message: 'Kuzenler kardeş olamaz!' };
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // EŞ İLİŞKİSİ KONTROLLERI
+      if (type === 'spouse') {
+        if (ancestors1.has(person2.id) || descendants1.has(person2.id)) {
+          return { valid: false, message: 'Ata-torun ilişkisi olanlar eş olamaz!' };
+        }
+        if (ancestors2.has(person1.id) || descendants2.has(person1.id)) {
+          return { valid: false, message: 'Ata-torun ilişkisi olanlar eş olamaz!' };
+        }
+        
+        if (person1.siblings && person1.siblings.includes(person2.id)) {
+          return { valid: false, message: 'Kardeşler eş olamaz!' };
+        }
+      }
+
+      // EBEVEYN-ÇOCUK İLİŞKİSİ KONTROLLERI (Person1 -> Person2'nin ebeveyni)
+      if (type === 'parent-child') {
+        // Maksimum 2 ebeveyn kontrolü
+        if (person2.parents && person2.parents.length >= 2) {
+          return { valid: false, message: person2.name + ' zaten 2 ebeveyni var! Önce birini silmelisiniz.' };
+        }
+        
+        // Dede/Nine torunun ebeveyni olamaz
+        if (ancestors1.has(person2.id)) {
+          return { valid: false, message: 'Dede/nine torunun ebeveyni olamaz!' };
+        }
+        // Torun ata/ananın çocuğu olamaz
+        if (descendants2.has(person1.id)) {
+          return { valid: false, message: 'Torun ata/ananın çocuğu olamaz!' };
+        }
+        if (person1.siblings && person1.siblings.includes(person2.id)) {
+          return { valid: false, message: 'Kardeşler ebeveyn-çocuk olamaz!' };
+        }
+        if (person1.spouse === person2.id) {
+          return { valid: false, message: 'Eşler ebeveyn-çocuk olamaz!' };
+        }
+        
+        // EŞ-ÇOCUK ÇAKIŞMASI: Person1'in eşi Person2'nin ebeveyni ise engelle
+        if (person1.spouse) {
+          const spouse = people.find(p => p.id === person1.spouse);
+          if (spouse && person2.parents && person2.parents.includes(spouse.id)) {
+            return { valid: false, message: 'Eşinizin çocuğunun ebeveyni olamazsınız!' };
+          }
+        }
+        
+        // EŞ-ÇOCUK ÇAKIŞMASI: Person2'nin eşi Person1'in çocuğu ise engelle
+        if (person2.spouse) {
+          const spouse = people.find(p => p.id === person2.spouse);
+          if (spouse && spouse.parents && spouse.parents.includes(person1.id)) {
+            return { valid: false, message: 'Çocuğunuzun eşi sizin çocuğunuz olamaz!' };
+          }
+        }
+        
+        // ÇAPRAZ KUŞAK: Dayı yeğeninin ebeveyni olamaz
+        // Person1'in kardeşleri Person2'nin torunları mı?
+        if (person1.siblings) {
+          for (let siblingId of person1.siblings) {
+            if (descendants2.has(siblingId)) {
+              return { valid: false, message: 'Dayı/amca/teyze/hala yeğenin ebeveyni olamaz!' };
+            }
+          }
+        }
+        
+        // Person2'nin kardeşleri Person1'in ataları mı?
+        if (person2.siblings) {
+          for (let siblingId of person2.siblings) {
+            if (ancestors1.has(siblingId)) {
+              return { valid: false, message: 'Yeğen dayı/amca/teyze/halanın çocuğu olamaz!' };
+            }
+          }
+        }
+      }
+
+      // ÇOCUK-EBEVEYN İLİŞKİSİ KONTROLLERI (Person2 -> Person1'in ebeveyni)
+      if (type === 'child-parent') {
+        // Maksimum 2 ebeveyn kontrolü
+        if (person1.parents && person1.parents.length >= 2) {
+          return { valid: false, message: person1.name + ' zaten 2 ebeveyni var! Önce birini silmelisiniz.' };
+        }
+        
+        // Dede/Nine torunun ebeveyni olamaz
+        if (ancestors2.has(person1.id)) {
+          return { valid: false, message: 'Dede/nine torunun ebeveyni olamaz!' };
+        }
+        // Torun ata/ananın çocuğu olamaz
+        if (descendants1.has(person2.id)) {
+          return { valid: false, message: 'Torun ata/ananın çocuğu olamaz!' };
+        }
+        if (person1.siblings && person1.siblings.includes(person2.id)) {
+          return { valid: false, message: 'Kardeşler ebeveyn-çocuk olamaz!' };
+        }
+        if (person1.spouse === person2.id) {
+          return { valid: false, message: 'Eşler ebeveyn-çocuk olamaz!' };
+        }
+        
+        // EŞ-ÇOCUK ÇAKIŞMASI (DÜZELT����LDİ): Person2'nin eşi Person1'in çocuğu ise engelle
+        // Senaryo: A-B eş, C de A'nın çocuğu. B'yi (person2) C'nin (person1) ebeveyni yapmaya çalışıyoruz.
+        // Person2 (B)'nin eşi (A) Person1 (C)'nin ebeveyni mi kontrol et
+        if (person2.spouse) {
+          const spouse = people.find(p => p.id === person2.spouse);
+          if (spouse && person1.parents && person1.parents.includes(spouse.id)) {
+            // Burası doğru, bu normal bir durum (üvey ebeveyn eklemek)
+            // Bu kontrolü kaldırıyoruz
+          }
+        }
+        
+        // EŞ-ÇOCUK ÇAKIŞMASI: Person1'in eşi Person2'nin çocuğu ise engelle
+        if (person1.spouse) {
+          const spouse = people.find(p => p.id === person1.spouse);
+          if (spouse && spouse.parents && spouse.parents.includes(person2.id)) {
+            return { valid: false, message: 'Eşinizin ebeveyni sizin çocuğunuz olamaz!' };
+          }
+        }
+        
+        // ÇAPRAZ KUŞAK: Yeğen dayısının ebeveyni olamaz
+        // Person2'nin kardeşleri Person1'in torunları mı?
+        if (person2.siblings) {
+          for (let siblingId of person2.siblings) {
+            if (descendants1.has(siblingId)) {
+              return { valid: false, message: 'Yeğen dayı/amca/teyze/halanın ebeveyni olamaz!' };
+            }
+          }
+        }
+        
+        // Person1'in kardeşleri Person2'nin ataları mı?
+        if (person1.siblings) {
+          for (let siblingId of person1.siblings) {
+            if (ancestors2.has(siblingId)) {
+              return { valid: false, message: 'Dayı/amca/teyze/hala yeğenin çocuğu olamaz!' };
+            }
+          }
+        }
+      }
+
+      return { valid: true };
+    }
+
+    function checkExistingRelationship(person1, person2) {
+      if (person1.spouse === person2.id) {
+        return 'Eş';
+      }
+      if (person1.siblings && person1.siblings.includes(person2.id)) {
+        return 'Kardeş';
+      }
+      if (person2.parents && person2.parents.includes(person1.id)) {
+        return person1.name + ' - ' + person2.name + ' (Ebeveyn-Çocuk)';
+      }
+      if (person1.parents && person1.parents.includes(person2.id)) {
+        return person2.name + ' - ' + person1.name + ' (Ebeveyn-Çocuk)';
+      }
+      
+      return null;
+    }
+
+    function showRelationshipModal(person1, person2) {
+      tempRelationship = { person1, person2 };
+      
+      document.getElementById('person1NameSpouse').textContent = person1.name;
+      document.getElementById('person2NameSpouse').textContent = person2.name;
+      document.getElementById('person1NameSibling').textContent = person1.name;
+      document.getElementById('person2NameSibling').textContent = person2.name;
+      document.getElementById('person1NameQuestion').textContent = person1.name;
+      document.getElementById('person2NameQuestion').textContent = person2.name;
+      
+      const existingRel = checkExistingRelationship(person1, person2);
+      const infoDiv = document.getElementById('existingRelationshipInfo');
+      const deleteBtn = document.getElementById('deleteRelationshipBtn');
+      
+      if (existingRel) {
+        infoDiv.textContent = 'Mevcut Bağ: ' + existingRel;
+        infoDiv.style.display = 'block';
+        deleteBtn.style.display = 'block';
+      } else {
+        infoDiv.style.display = 'none';
+        deleteBtn.style.display = 'none';
+      }
+      
+      document.getElementById('relationshipModal').classList.add('active');
+    }
+
+    function autoLinkSiblings(person) {
+      if (!person.parents || person.parents.length === 0) return;
+      
+      // SADECE her iki kişinin de TAM 2 ebeveyni varsa VE bu 2 ebeveyn tamamen aynıysa kardeş yap
+      // Tek ebeveynli çocuklar asla otomatik kardeş yapılmaz
+      const potentialSiblings = people.filter(p => {
+        if (p.id === person.id) return false;
+        if (!p.parents || p.parents.length === 0) return false;
+        
+        // Her iki kişinin de TAM OLARAK 2 ebeveyni olmalı (tam kardeş kontrolü)
+        if (person.parents.length !== 2 || p.parents.length !== 2) return false;
+        
+        const personParents = [...person.parents].sort();
+        const pParents = [...p.parents].sort();
+        
+        // TAMAMEN aynı 2 ebeveyn mi kontrol et
+        return JSON.stringify(personParents) === JSON.stringify(pParents);
+      });
+      
+      if (potentialSiblings.length > 0) {
+        const allSiblings = new Set([person.id, ...potentialSiblings.map(p => p.id)]);
+        
+        // Mevcut kardeşleri ekleme - sadece yeni bulunanları ekle
+        allSiblings.forEach(id1 => {
+          const p1 = people.find(p => p.id === id1);
+          if (!p1) return;
+          if (!p1.siblings) p1.siblings = [];
+          
+          allSiblings.forEach(id2 => {
+            if (id1 !== id2 && !p1.siblings.includes(id2)) {
+              p1.siblings.push(id2);
+            }
+          });
+        });
+      }
+    }
+
+    function autoCompleteFamily(child, parent, relType) {
+      const autoConnections = [];
+      
+      if (relType === 'parent-child' || relType === 'child-parent') {
+        // Ebeveyn ekleme - sadece 2 ebeveyn varsa ve ikisi de eş değilse eş yap
+        if (child.parents && child.parents.length === 2) {
+          const parent1 = people.find(p => p.id === child.parents[0]);
+          const parent2 = people.find(p => p.id === child.parents[1]);
+          
+          if (parent1 && parent2 && !parent1.spouse && !parent2.spouse && parent1.gender !== parent2.gender) {
+            parent1.spouse = parent2.id;
+            parent2.spouse = parent1.id;
+            autoConnections.push(parent1.name + ' <-> ' + parent2.name + ' (Eş)');
+          }
+        }
+        
+        // *** KALDIRILDI: Eşin otomatik çocuk olarak eklenmesi ***
+        // Artık eş varsa otomatik olarak çocuğun ebeveyni yapılmaz
+      }
+      
+      if (relType === 'spouse') {
+        const person1 = child;
+        const person2 = parent;
+        
+        people.forEach(potentialChild => {
+          if (potentialChild.parents && potentialChild.parents.includes(person1.id)) {
+            if (!potentialChild.parents.includes(person2.id)) {
+              potentialChild.parents.push(person2.id);
+              autoConnections.push(person2.name + ' -> ' + potentialChild.name + ' (Ebeveyn)');
+              autoLinkSiblings(potentialChild);
+            }
+          }
+        });
+        
+        people.forEach(potentialChild => {
+          if (potentialChild.parents && potentialChild.parents.includes(person2.id)) {
+            if (!potentialChild.parents.includes(person1.id)) {
+              potentialChild.parents.push(person1.id);
+              autoConnections.push(person1.name + ' -> ' + potentialChild.name + ' (Ebeveyn)');
+              autoLinkSiblings(potentialChild);
+            }
+          }
+        });
+      }
+      
+      if (relType === 'sibling') {
+        const person1 = child;
+        const person2 = parent;
+        
+        // Person1'in ebeveyni varsa Person2'ye aktar
+        if (person1.parents && person1.parents.length > 0) {
+          if (!person2.parents) person2.parents = [];
+          person1.parents.forEach(parentId => {
+            if (!person2.parents.includes(parentId)) {
+              person2.parents.push(parentId);
+              const parentPerson = people.find(p => p.id === parentId);
+              if (parentPerson) {
+                autoConnections.push(parentPerson.name + ' -> ' + person2.name + ' (Ebeveyn)');
+              }
+            }
+          });
+        }
+        
+        // Person2'nin ebeveyni varsa Person1'e aktar
+        if (person2.parents && person2.parents.length > 0) {
+          if (!person1.parents) person1.parents = [];
+          person2.parents.forEach(parentId => {
+            if (!person1.parents.includes(parentId)) {
+              person1.parents.push(parentId);
+              const parentPerson = people.find(p => p.id === parentId);
+              if (parentPerson) {
+                autoConnections.push(parentPerson.name + ' -> ' + person1.name + ' (Ebeveyn)');
+              }
+            }
+          });
+        }
+        
+        // Her iki karde��i de otomatik kardeş linklemeden geçir
+        autoLinkSiblings(person1);
+        autoLinkSiblings(person2);
+      }
+      
+      if (autoConnections.length > 0) {
+        const message = 'Otomatik bağlantılar:\n' + autoConnections.join('\n');
+        showToast(message);
+      }
+    }
+
+    function createRelationship(type) {
+      const person1 = tempRelationship.person1;
+      const person2 = tempRelationship.person2;
+      
+      if (!person1 || !person2) return;
+
+      const validation = validateRelationship(person1, person2, type);
+      if (!validation.valid) {
+        showToast(validation.message, true);
+        return;
+      }
+
+      if (type === 'spouse') {
+        if (person1.spouse) {
+          const oldSpouse = people.find(p => p.id === person1.spouse);
+          if (oldSpouse) oldSpouse.spouse = null;
+        }
+        if (person2.spouse) {
+          const oldSpouse = people.find(p => p.id === person2.spouse);
+          if (oldSpouse) oldSpouse.spouse = null;
+        }
+        person1.spouse = person2.id;
+        person2.spouse = person1.id;
+        autoCompleteFamily(person1, person2, 'spouse');
+        showToast(person1.name + ' ve ' + person2.name + ' eş oldu!');
+      } 
+      else if (type === 'parent-child') {
+        if (!person2.parents) person2.parents = [];
+        if (!person2.parents.includes(person1.id)) {
+          person2.parents.push(person1.id);
+        }
+        
+        // KARDEŞ GRUBU OTOMATİK BAĞLAMA
+        // Person2'nin kardeşleri varsa, onları da aynı ebeveyni bağla
+        if (person2.siblings && person2.siblings.length > 0) {
+          person2.siblings.forEach(siblingId => {
+            const sibling = people.find(p => p.id === siblingId);
+            if (sibling) {
+              if (!sibling.parents) sibling.parents = [];
+              if (!sibling.parents.includes(person1.id)) {
+                sibling.parents.push(person1.id);
+                autoCompleteFamily(sibling, person1, 'parent-child');
+                autoLinkSiblings(sibling);
+              }
+            }
+          });
+        }
+        
+        autoCompleteFamily(person2, person1, 'parent-child');
+        autoLinkSiblings(person2);
+        showToast(person1.name + ', ' + person2.name + '\'in ebeveyni oldu!');
+      }
+      else if (type === 'child-parent') {
+        if (!person1.parents) person1.parents = [];
+        if (!person1.parents.includes(person2.id)) {
+          person1.parents.push(person2.id);
+        }
+        
+        // KARDEŞ GRUBU OTOMATİK BAĞLAMA (TERS YÖN)
+        // Person1'in kardeşleri varsa, onları da aynı ebeveyni bağla
+        if (person1.siblings && person1.siblings.length > 0) {
+          person1.siblings.forEach(siblingId => {
+            const sibling = people.find(p => p.id === siblingId);
+            if (sibling) {
+              if (!sibling.parents) sibling.parents = [];
+              if (!sibling.parents.includes(person2.id)) {
+                sibling.parents.push(person2.id);
+                autoCompleteFamily(sibling, person2, 'child-parent');
+                autoLinkSiblings(sibling);
+              }
+            }
+          });
+        }
+        
+        autoCompleteFamily(person1, person2, 'child-parent');
+        autoLinkSiblings(person1);
+        showToast(person2.name + ', ' + person1.name + '\'in ebeveyni oldu!');
+      }
+      else if (type === 'sibling') {
+        const allSiblings = new Set([person1.id, person2.id]);
+        
+        if (person1.siblings) {
+          person1.siblings.forEach(id => allSiblings.add(id));
+        }
+        if (person2.siblings) {
+          person2.siblings.forEach(id => allSiblings.add(id));
+        }
+        
+        allSiblings.forEach(id1 => {
+          const p1 = people.find(p => p.id === id1);
+          if (!p1) return;
+          if (!p1.siblings) p1.siblings = [];
+          
+          allSiblings.forEach(id2 => {
+            if (id1 !== id2 && !p1.siblings.includes(id2)) {
+              p1.siblings.push(id2);
+            }
+          });
+        });
+        
+        // Kardeş yapıldığında ebeveynleri de otomatik aktar
+        autoCompleteFamily(person1, person2, 'sibling');
+        
+        showToast(person1.name + ' ve ' + person2.name + ' karde���� oldu!');
+      }
+
+      closeRelationshipModal();
+      renderTree();
+    }
+
+    function deleteExistingRelationship() {
+      const person1 = tempRelationship.person1;
+      const person2 = tempRelationship.person2;
+      
+      if (!person1 || !person2) return;
+      
+      if (person1.spouse === person2.id) {
+        person1.spouse = null;
+        person2.spouse = null;
+        showToast('Eş bağı silindi!');
+      }
+      
+      if (person1.siblings && person1.siblings.includes(person2.id)) {
+        // İLK TIKLANAN KİŞİ (person1) gruptan çıkar
+        // Person1'in kardeşlerini topla
+        const person1Siblings = [...person1.siblings];
+        
+        // Person1'i SADECE kendisi için temizle
+        person1.siblings = [];
+        person1.parents = [];
+        
+        // Person1'i diğer tüm kardeşlerin listesinden çıkar
+        person1Siblings.forEach(siblingId => {
+          const sibling = people.find(p => p.id === siblingId);
+          if (sibling && sibling.siblings) {
+            sibling.siblings = sibling.siblings.filter(id => id !== person1.id);
+          }
+        });
+        
+        showToast(person1.name + ' kardeş grubundan ayrıldı!');
+      }
+      
+      if (person2.parents && person2.parents.includes(person1.id)) {
+        // Eğer kardeş bağı varsa uyarı ver
+        if (person2.siblings && person2.siblings.length > 0) {
+          showToast('⚠️ Önce ' + person2.name + '\'in kardeşlik bağlarını silmelisiniz!', true);
+          return;
+        }
+        
+        person2.parents = person2.parents.filter(id => id !== person1.id);
+        showToast('Ebeveyn-çocuk bağı silindi!');
+      }
+      if (person1.parents && person1.parents.includes(person2.id)) {
+        // Eğer kardeş bağı varsa uyarı ver
+        if (person1.siblings && person1.siblings.length > 0) {
+          showToast('⚠️ Önce ' + person1.name + '\'in kardeşlik bağlarını silmelisiniz!', true);
+          return;
+        }
+        
+        person1.parents = person1.parents.filter(id => id !== person2.id);
+        showToast('Ebeveyn-çocuk bağı silindi!');
+      }
+      
+      closeRelationshipModal();
+      renderTree();
+    }
+
+    function closeRelationshipModal() {
+      document.getElementById('relationshipModal').classList.remove('active');
+      connectingPerson = null;
+      renderTree();
+    }
+
+    // Event Listeners - Desktop sidebar buttons
+    document.getElementById('addPersonBtnSidebar').addEventListener('click', openAddPersonModal);
+    document.getElementById('multiSelectBtnSidebar').addEventListener('click', toggleMultiSelect);
+    document.getElementById('editPersonBtnSidebar').addEventListener('click', editSelectedPerson);
+    document.getElementById('deleteMultipleBtnSidebar').addEventListener('click', deleteMultiple);
+    document.getElementById('clearSelectionBtnSidebar').addEventListener('click', clearSelection);
+    document.getElementById('saveTreeBtnSidebar').addEventListener('click', saveToLocalStorage);
+    document.getElementById('loadTreeBtnSidebar').addEventListener('click', showLoadHistoryModal);
+    document.getElementById('downloadImageBtnSidebar').addEventListener('click', downloadImage);
+
+    // Event Listeners - Mobile buttons
+    document.getElementById('addPersonBtnMobile').addEventListener('click', openAddPersonModal);
+    document.getElementById('multiSelectBtnMobile').addEventListener('click', toggleMultiSelect);
+    document.getElementById('editPersonBtnMobile').addEventListener('click', editSelectedPerson);
+    document.getElementById('deleteMultipleBtnMobile').addEventListener('click', deleteMultiple);
+    document.getElementById('clearSelectionBtnMobile').addEventListener('click', clearSelection);
+    document.getElementById('saveTreeBtnMobile').addEventListener('click', saveToLocalStorage);
+    document.getElementById('loadTreeBtnMobile').addEventListener('click', showLoadHistoryModal);
+    document.getElementById('downloadImageBtnMobile').addEventListener('click', downloadImage);
+
+    // Event Listeners - Load history modal
+    document.getElementById('closeLoadModalBtn').addEventListener('click', closeLoadHistoryModal);
+    
+    // Event Listeners - Person info modal
+    document.getElementById('closeInfoModalBtn').addEventListener('click', closePersonInfoModal);
+
+    function openAddPersonModal() {
+      editingPersonId = null;
+      document.getElementById('modalTitle').textContent = 'Yeni Kişi Ekle';
+      document.getElementById('addPersonModal').classList.add('active');
+      document.getElementById('addPersonForm').reset();
+    }
+
+    function editSelectedPerson() {
+      if (selectedPeople.size !== 1) return;
+      
+      const personId = Array.from(selectedPeople)[0];
+      editPerson(personId);
+    }
+
+    function toggleMultiSelect() {
+      multiSelectMode = !multiSelectMode;
+      
+      const tooltip = document.getElementById('multiSelectTooltip');
+      const deleteBtnSidebar = document.getElementById('deleteMultipleBtnSidebar');
+      const deleteBtnMobile = document.getElementById('deleteMultipleBtnMobile');
+      const editBtnSidebar = document.getElementById('editPersonBtnSidebar');
+      const editBtnMobile = document.getElementById('editPersonBtnMobile');
+      const multiSelectBtnSidebar = document.getElementById('multiSelectBtnSidebar');
+      const multiSelectBtnMobile = document.getElementById('multiSelectBtnMobile');
+      
+      if (multiSelectMode) {
+        if (tooltip) tooltip.textContent = 'Çoklu Seçim: Açık';
+        multiSelectBtnSidebar.style.borderColor = '#10b981';
+        multiSelectBtnSidebar.style.background = '#d1fae5';
+        multiSelectBtnMobile.style.borderColor = '#10b981';
+        multiSelectBtnMobile.style.background = '#d1fae5';
+        showToast('Seçim modu açıldı!');
+      } else {
+        if (tooltip) tooltip.textContent = 'Çoklu Seçim';
+        multiSelectBtnSidebar.style.borderColor = '#dee2e6';
+        multiSelectBtnSidebar.style.background = 'white';
+        multiSelectBtnMobile.style.borderColor = '#dee2e6';
+        multiSelectBtnMobile.style.background = 'white';
+        selectedPeople.clear();
+        deleteBtnSidebar.style.display = 'none';
+        editBtnSidebar.style.display = 'none';
+        if (deleteBtnMobile) deleteBtnMobile.style.display = 'none';
+        if (editBtnMobile) editBtnMobile.style.display = 'none';
+        showToast('Seçim modu kapatıldı');
+      }
+      
+      connectingPerson = null;
+      selectedPerson = null;
+      renderTree();
+    }
+
+    function deleteMultiple() {
+      if (selectedPeople.size === 0) return;
+
+      const deleteBtnSidebar = document.getElementById('deleteMultipleBtnSidebar');
+      const deleteBtnMobile = document.getElementById('deleteMultipleBtnMobile');
+      
+      if (deleteBtnSidebar.title.includes('Emin misiniz?')) {
+        selectedPeople.forEach(personId => {
+          const person = people.find(p => p.id === personId);
+          if (!person) return;
+
+          if (person.spouse) {
+            const spouse = people.find(p => p.id === person.spouse);
+            if (spouse) spouse.spouse = null;
+          }
+
+          if (person.siblings) {
+            person.siblings.forEach(sibId => {
+              const sib = people.find(p => p.id === sibId);
+              if (sib) {
+                sib.siblings = sib.siblings.filter(s => s !== personId);
+              }
+            });
+          }
+
+          people.forEach(p => {
+            if (p.parents && p.parents.includes(personId)) {
+              p.parents = p.parents.filter(id => id !== personId);
+            }
+          });
+        });
+
+        people = people.filter(p => !selectedPeople.has(p.id));
+        
+        const count = selectedPeople.size;
+        selectedPeople.clear();
+        multiSelectMode = false;
+        const tooltip = document.getElementById('multiSelectTooltip');
+        if (tooltip) tooltip.textContent = 'Çoklu Seçim';
+        deleteBtnSidebar.style.display = 'none';
+        if (deleteBtnMobile) deleteBtnMobile.style.display = 'none';
+        
+        renderTree();
+        showToast(count + ' kişi silindi!');
+      } else {
+        const msg = 'Emin misiniz? (' + selectedPeople.size + ' kişi)';
+        deleteBtnSidebar.title = msg;
+        if (deleteBtnMobile) deleteBtnMobile.title = msg;
+        deleteBtnSidebar.style.background = '#c82333';
+        if (deleteBtnMobile) deleteBtnMobile.style.background = '#c82333';
+        setTimeout(() => {
+          deleteBtnSidebar.title = 'Seçilenleri Sil';
+          if (deleteBtnMobile) deleteBtnMobile.title = 'Sil';
+          deleteBtnSidebar.style.background = '#dc3545';
+          if (deleteBtnMobile) deleteBtnMobile.style.background = '#dc3545';
+        }, 3000);
+      }
+    }
+
+    function clearSelection() {
+      selectedPerson = null;
+      connectingPerson = null;
+      selectedPeople.clear();
+      multiSelectMode = false;
+      const tooltip = document.getElementById('multiSelectTooltip');
+      if (tooltip) tooltip.textContent = 'Çoklu Seçim';
+      
+      document.getElementById('deleteMultipleBtnSidebar').style.display = 'none';
+      document.getElementById('editPersonBtnSidebar').style.display = 'none';
+      
+      const deleteBtnMobile = document.getElementById('deleteMultipleBtnMobile');
+      const editBtnMobile = document.getElementById('editPersonBtnMobile');
+      if (deleteBtnMobile) deleteBtnMobile.style.display = 'none';
+      if (editBtnMobile) editBtnMobile.style.display = 'none';
+      
+      // Buton renklerini sıfırla
+      const multiSelectBtnSidebar = document.getElementById('multiSelectBtnSidebar');
+      const multiSelectBtnMobile = document.getElementById('multiSelectBtnMobile');
+      multiSelectBtnSidebar.style.borderColor = '#dee2e6';
+      multiSelectBtnSidebar.style.background = 'white';
+      multiSelectBtnMobile.style.borderColor = '#dee2e6';
+      multiSelectBtnMobile.style.background = 'white';
+      
+      renderTree();
+      showToast('Seçim temizlendi');
+    }
+
+    async function downloadImage() {
+      const btnSidebar = document.getElementById('downloadImageBtnSidebar');
+      const btnMobile = document.getElementById('downloadImageBtnMobile');
+      
+      btnSidebar.disabled = true;
+      btnSidebar.title = '⏳ Hazırlanıyor...';
+      if (btnMobile) {
+        btnMobile.disabled = true;
+        btnMobile.title = '⏳ Hazırlanıyor...';
+      }
+      
+      try {
+        // Kartların ve çizgilerin sınırlarını hesapla
+        let minX = Infinity, minY = Infinity;
+        let maxX = -Infinity, maxY = -Infinity;
+        
+        // Kartların sınırları
+        people.forEach(person => {
+          const cardLeft = person.x - CARD_WIDTH / 2;
+          const cardRight = person.x + CARD_WIDTH / 2;
+          const cardTop = person.y - CARD_HEIGHT / 2;
+          const cardBottom = person.y + CARD_HEIGHT / 2;
+          
+          minX = Math.min(minX, cardLeft);
+          maxX = Math.max(maxX, cardRight);
+          minY = Math.min(minY, cardTop);
+          maxY = Math.max(maxY, cardBottom);
+        });
+        
+        // Çizgilerin sınırlarını hesapla
+        const horizontalOffset = 40;
+        const verticalOffset = CARD_HEIGHT / 2 + 110;
+        const verticalStartOffset = CARD_HEIGHT / 2 + 60;
+        
+        // Eş bağlantıları için sınırlar
+        const drawnSpouses = new Set();
+        people.forEach(person => {
+          if (person.spouse && !drawnSpouses.has(person.id + '-' + person.spouse) && !drawnSpouses.has(person.spouse + '-' + person.id)) {
+            const spouse = people.find(p => p.id === person.spouse);
+            if (spouse) {
+              const connectionY = Math.max(person.y, spouse.y) + verticalOffset;
+              minY = Math.min(minY, connectionY);
+              maxY = Math.max(maxY, connectionY);
+              
+              const x1 = person.x + horizontalOffset;
+              const x2 = spouse.x + horizontalOffset;
+              minX = Math.min(minX, x1, x2);
+              maxX = Math.max(maxX, x1, x2);
+              
+              drawnSpouses.add(person.id + '-' + person.spouse);
+            }
+          }
+        });
+        
+        // Ebeveyn-çocuk bağlantıları için sınırlar
+        const processedParentGroups = new Set();
+        people.forEach(child => {
+          if (child.parents && child.parents.length > 0) {
+            const parentKey = [...child.parents].sort().join('-');
+            
+            if (!processedParentGroups.has(parentKey)) {
+              const children = people.filter(p => {
+                if (!p.parents || p.parents.length === 0) return false;
+                const pKey = [...p.parents].sort().join('-');
+                return pKey === parentKey;
+              });
+              
+              const parents = child.parents.map(id => people.find(p => p.id === id)).filter(Boolean);
+              if (parents.length > 0) {
+                const maxParentY = Math.max(...parents.map(p => p.y));
+                const parentConnectionY = maxParentY + CARD_HEIGHT / 2 + 110;
+                const bendPointY = parentConnectionY + 30;
+                
+                const parent1 = parents[0];
+                const parent2 = parents.length > 1 ? parents[1] : parent1;
+                const spouseConnectionMidX = ((parent1.x + parent2.x) / 2) + horizontalOffset;
+                
+                const childrenAvgX = children.reduce((sum, c) => sum + c.x, 0) / children.length;
+                const childrenAvgY = children.reduce((sum, c) => sum + c.y, 0) / children.length;
+                const greenLineX = childrenAvgX + horizontalOffset;
+                const childConnectionY = childrenAvgY - CARD_HEIGHT / 2 - 30;
+                
+                minX = Math.min(minX, spouseConnectionMidX, greenLineX);
+                maxX = Math.max(maxX, spouseConnectionMidX, greenLineX);
+                minY = Math.min(minY, childConnectionY);
+                maxY = Math.max(maxY, parentConnectionY, bendPointY);
+                
+                children.forEach(c => {
+                  const x = c.x + horizontalOffset;
+                  minX = Math.min(minX, x);
+                  maxX = Math.max(maxX, x);
+                });
+              }
+              
+              processedParentGroups.add(parentKey);
+            }
+          }
+        });
+        
+        // Kardeş bağlantıları için sınırlar
+        const processedSiblingGroups = new Set();
+        people.forEach(person => {
+          if (person.siblings && person.siblings.length > 0) {
+            const siblingGroupIds = new Set([person.id, ...person.siblings]);
+            const groupKey = [...siblingGroupIds].sort().join('-');
+            
+            if (!processedSiblingGroups.has(groupKey)) {
+              const siblingGroup = people.filter(p => siblingGroupIds.has(p.id));
+              
+              const minSibY = Math.min(...siblingGroup.map(s => s.y));
+              const maxSibY = Math.max(...siblingGroup.map(s => s.y));
+              const minSibX = Math.min(...siblingGroup.map(s => s.x));
+              const maxSibX = Math.max(...siblingGroup.map(s => s.x));
+              
+              const verticalSpread = maxSibY - minSibY;
+              const horizontalSpread = maxSibX - minSibX;
+              
+              if (verticalSpread <= horizontalSpread) {
+                const connectionY = minSibY - CARD_HEIGHT / 2 - 10;
+                minY = Math.min(minY, connectionY);
+                
+                siblingGroup.forEach(s => {
+                  const x = s.x + horizontalOffset;
+                  minX = Math.min(minX, x);
+                  maxX = Math.max(maxX, x);
+                });
+              } else {
+                siblingGroup.forEach(s => {
+                  const x = s.x + 40;
+                  minX = Math.min(minX, x);
+                  maxX = Math.max(maxX, x);
+                });
+              }
+              
+              processedSiblingGroups.add(groupKey);
+            }
+          }
+        });
+        
+        // 40px bo��luk ekle
+        const padding = 40;
+        minX -= padding;
+        minY -= padding;
+        maxX += padding;
+        maxY += padding;
+        
+        const width = maxX - minX;
+        const height = maxY - minY;
+        
+        // Canvas oluştur
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        
+        // Beyaz arka plan
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, width, height);
+        
+        // Bağlantı çizgilerini çiz
+        await drawConnectionsToCanvas(ctx, minX, minY);
+        
+        // Kartları çiz
+        await drawCardsToCanvas(ctx, minX, minY);
+        
+        // PNG olarak indir
+        canvas.toBlob(function(blob) {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'soy-agaci-' + new Date().getTime() + '.png';
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          
+          btnSidebar.disabled = false;
+          btnSidebar.title = 'Görseli İndir';
+          if (btnMobile) {
+            btnMobile.disabled = false;
+            btnMobile.title = 'İndir';
+          }
+          showToast('✅ Görsel indirildi!');
+        });
+      } catch (error) {
+        console.error('İndirme hatası:', error);
+        showToast('❌ İndirme hatası: ' + error.message, true);
+        btnSidebar.disabled = false;
+        btnSidebar.title = 'Görseli İndir';
+        if (btnMobile) {
+          btnMobile.disabled = false;
+          btnMobile.title = 'İndir';
+        }
+      }
+    }
+
+    async function drawConnectionsToCanvas(ctx, offsetX, offsetY) {
+      // Ebeveyn-����ocuk bağlantıları
+      const processedParentGroups = new Set();
+      people.forEach(child => {
+        if (child.parents && child.parents.length > 0) {
+          const parentKey = [...child.parents].sort().join('-');
+          
+          if (!processedParentGroups.has(parentKey)) {
+            const children = people.filter(p => {
+              if (!p.parents || p.parents.length === 0) return false;
+              const pKey = [...p.parents].sort().join('-');
+              return pKey === parentKey;
+            });
+            
+            drawParentToChildrenConnectionCanvas(ctx, child.parents, children, offsetX, offsetY);
+            processedParentGroups.add(parentKey);
+          }
+        }
+      });
+      
+      // Eş ba����lantıları
+      const drawnSpouses = new Set();
+      people.forEach(person => {
+        if (person.spouse && !drawnSpouses.has(person.id + '-' + person.spouse) && !drawnSpouses.has(person.spouse + '-' + person.id)) {
+          const spouse = people.find(p => p.id === person.spouse);
+          if (spouse) {
+            drawSpouseConnectionCanvas(ctx, person, spouse, offsetX, offsetY);
+            drawnSpouses.add(person.id + '-' + person.spouse);
+          }
+        }
+      });
+      
+      // Kardeş ba����lant��ları
+      const processedSiblingGroups = new Set();
+      people.forEach(person => {
+        if (person.siblings && person.siblings.length > 0) {
+          const siblingGroupIds = new Set([person.id, ...person.siblings]);
+          const groupKey = [...siblingGroupIds].sort().join('-');
+          
+          if (!processedSiblingGroups.has(groupKey)) {
+            const siblingGroup = people.filter(p => siblingGroupIds.has(p.id));
+            drawSiblingConnectionCanvas(ctx, siblingGroup, offsetX, offsetY);
+            processedSiblingGroups.add(groupKey);
+          }
+        }
+      });
+    }
+
+    function drawLineCanvas(ctx, x1, y1, x2, y2, color, width, dashArray = null) {
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      if (dashArray) {
+        ctx.setLineDash(dashArray);
+      } else {
+        ctx.setLineDash([]);
+      }
+      ctx.stroke();
+    }
+
+    function drawSpouseConnectionCanvas(ctx, person1, person2, offsetX, offsetY) {
+      const centerX1 = person1.x - offsetX;
+      const centerY1 = person1.y - offsetY;
+      const centerX2 = person2.x - offsetX;
+      const centerY2 = person2.y - offsetY;
+      
+      const horizontalOffset = 0;
+      const verticalOffset = CARD_HEIGHT / 2 + 70;
+      const verticalStartOffset = CARD_HEIGHT / 2;
+      
+      const connectionY = Math.max(centerY1, centerY2) + verticalOffset;
+      
+      drawLineCanvas(ctx, centerX1 + horizontalOffset, centerY1 + verticalStartOffset, centerX1 + horizontalOffset, connectionY, '#f97316', 3);
+      drawLineCanvas(ctx, centerX2 + horizontalOffset, centerY2 + verticalStartOffset, centerX2 + horizontalOffset, connectionY, '#f97316', 3);
+      drawLineCanvas(ctx, centerX1 + horizontalOffset, connectionY, centerX2 + horizontalOffset, connectionY, '#f97316', 3);
+    }
+
+    function drawSiblingConnectionCanvas(ctx, siblingGroup, offsetX, offsetY) {
+      if (!siblingGroup || siblingGroup.length < 2) return;
+      
+      const firstSibling = siblingGroup[0];
+      const hasParents = firstSibling.parents && firstSibling.parents.length > 0;
+      
+      const minY = Math.min(...siblingGroup.map(s => s.y));
+      const maxY = Math.max(...siblingGroup.map(s => s.y));
+      const minX = Math.min(...siblingGroup.map(s => s.x));
+      const maxX = Math.max(...siblingGroup.map(s => s.x));
+      
+      const verticalSpread = maxY - minY;
+      const horizontalSpread = maxX - minX;
+      
+      if (verticalSpread <= horizontalSpread) {
+        const horizontalOffset = 0;
+        let connectionY;
+        
+        if (hasParents) {
+          const childrenAvgY = siblingGroup.reduce((sum, s) => sum + s.y, 0) / siblingGroup.length;
+          connectionY = childrenAvgY - CARD_HEIGHT / 2 - 20;
+        } else {
+          connectionY = minY - CARD_HEIGHT / 2 - 50;
+        }
+        
+        siblingGroup.forEach(sibling => {
+          const cardTop = sibling.y - CARD_HEIGHT / 2;
+          drawLineCanvas(ctx, sibling.x + horizontalOffset - offsetX, cardTop - offsetY, sibling.x + horizontalOffset - offsetX, connectionY - offsetY, '#3b82f6', 3);
+        });
+        
+        drawLineCanvas(ctx, minX + horizontalOffset - offsetX, connectionY - offsetY, maxX + horizontalOffset - offsetX, connectionY - offsetY, '#3b82f6', 3);
+      } else {
+        siblingGroup.sort((a, b) => a.y - b.y);
+        
+        for (let i = 0; i < siblingGroup.length - 1; i++) {
+          const sibling1 = siblingGroup[i];
+          const sibling2 = siblingGroup[i + 1];
+          
+          if (Math.abs(sibling1.x - sibling2.x) === 0) {
+            const lineX = sibling1.x - offsetX;
+            const y1 = sibling1.y - offsetY;
+            const y2 = sibling2.y - offsetY;
+            
+            drawLineCanvas(ctx, lineX, y1, lineX, y2, '#3b82f6', 3);
+          }
+        }
+      }
+    }
+
+    function drawParentToChildrenConnectionCanvas(ctx, parentIds, children, offsetX, offsetY) {
+      if (!parentIds || parentIds.length === 0 || !children || children.length === 0) return;
+      
+      const parents = parentIds.map(id => people.find(p => p.id === id)).filter(Boolean);
+      if (parents.length === 0) return;
+      
+      let isDashed = false;
+      if (parents.length === 1) {
+        const singleParent = parents[0];
+        if (singleParent.spouse) {
+          const spouse = people.find(p => p.id === singleParent.spouse);
+          if (spouse) {
+            const spouseIsParent = children.some(child => 
+              child.parents && child.parents.includes(spouse.id)
+            );
+            isDashed = !spouseIsParent;
+          }
+        }
+      }
+      const dashArray = isDashed ? [5, 5] : null;
+      
+      const horizontalOffset = 0;
+      const greenHorizontalOffset = 0;
+      
+      const maxParentY = Math.max(...parents.map(p => p.y));
+      
+      const parent1 = parents[0];
+      const parent2 = parents.length > 1 ? parents[1] : parent1;
+      const spouseConnectionMidX = ((parent1.x + parent2.x) / 2) + horizontalOffset - offsetX;
+      
+      const parentConnectionY = maxParentY + CARD_HEIGHT / 2 + 70 - offsetY;
+      
+      const firstChild = children[0];
+      const hasSiblings = firstChild.siblings && firstChild.siblings.length > 0;
+      
+      let childConnectionY;
+      let greenLineX;
+      
+      if (hasSiblings) {
+        const childrenAvgY = children.reduce((sum, c) => sum + c.y, 0) / children.length;
+        childConnectionY = childrenAvgY - CARD_HEIGHT / 2 - 20 - offsetY;
+        
+        const minChildX = Math.min(...children.map(c => c.x));
+        const maxChildX = Math.max(...children.map(c => c.x));
+        greenLineX = ((minChildX + maxChildX) / 2) + greenHorizontalOffset - offsetX;
+      } else {
+        const childrenAvgX = children.reduce((sum, c) => sum + c.x, 0) / children.length;
+        const childrenAvgY = children.reduce((sum, c) => sum + c.y, 0) / children.length;
+        greenLineX = childrenAvgX + greenHorizontalOffset - offsetX;
+        childConnectionY = childrenAvgY - CARD_HEIGHT / 2 - 70 - offsetY;
+      }
+      
+      const safeChildConnectionY = childConnectionY;
+      
+      drawLineCanvas(ctx, spouseConnectionMidX, parentConnectionY, spouseConnectionMidX, safeChildConnectionY, '#10b981', 3, dashArray);
+      drawLineCanvas(ctx, spouseConnectionMidX, safeChildConnectionY, greenLineX, safeChildConnectionY, '#10b981', 3, dashArray);
+      
+      children.forEach(child => {
+        const cardTop = child.y - CARD_HEIGHT / 2 - offsetY;
+        drawLineCanvas(ctx, child.x + greenHorizontalOffset - offsetX, safeChildConnectionY, child.x + greenHorizontalOffset - offsetX, cardTop, '#10b981', 3, dashArray);
+      });
+    }
+
+    async function drawCardsToCanvas(ctx, offsetX, offsetY) {
+      ctx.font = 'bold 16px "Segoe UI", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      
+      for (const person of people) {
+        const x = person.x - CARD_WIDTH / 2 - offsetX;
+        const y = person.y - CARD_HEIGHT / 2 - offsetY;
+        
+        // Gradient arka plan
+        const gradient = ctx.createLinearGradient(x, y, x + CARD_WIDTH, y + CARD_HEIGHT);
+        if (person.gender === 'erkek') {
+          gradient.addColorStop(0, '#60a5fa');
+          gradient.addColorStop(1, '#3b82f6');
+        } else {
+          gradient.addColorStop(0, '#f9a8d4');
+          gradient.addColorStop(1, '#ec4899');
+        }
+        
+        // Kart arka planı
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.roundRect(x, y, CARD_WIDTH, CARD_HEIGHT, 8);
+        ctx.fill();
+        
+        // Beyaz kenarlık
+        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+        ctx.lineWidth = 3;
+        ctx.stroke();
+        
+        // İsim
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 16px "Segoe UI", sans-serif';
+        ctx.shadowColor = 'rgba(0,0,0,0.2)';
+        ctx.shadowBlur = 2;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 1;
+        
+        // İsim uzunsa alt satıra kay
+        const maxWidth = CARD_WIDTH - 20;
+        const words = person.name.split(' ');
+        let line = '';
+        let textY = y + CARD_HEIGHT / 2;
+        
+        for (let i = 0; i < words.length; i++) {
+          const testLine = line + words[i] + ' ';
+          const metrics = ctx.measureText(testLine);
+          
+          if (metrics.width > maxWidth && i > 0) {
+            ctx.fillText(line, x + CARD_WIDTH / 2, textY - 5);
+            line = words[i] + ' ';
+            textY += 18;
+          } else {
+            line = testLine;
+          }
+        }
+        ctx.fillText(line, x + CARD_WIDTH / 2, textY - 5);
+        
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+      }
+    }
+
+    document.getElementById('closeModalBtn').addEventListener('click', function() {
+      document.getElementById('addPersonModal').classList.remove('active');
+      document.getElementById('addPersonForm').reset();
+      editingPersonId = null;
+    });
+
+    document.getElementById('addPersonForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      const name = document.getElementById('personName').value;
+      const gender = document.getElementById('personGender').value;
+      const birthYear = document.getElementById('personBirthYear').value;
+      const notes = document.getElementById('personNotes').value;
+
+      if (editingPersonId) {
+        const person = people.find(p => p.id === editingPersonId);
+        if (person) {
+          person.name = name;
+          person.gender = gender;
+          person.birthYear = birthYear ? parseInt(birthYear) : null;
+          person.notes = notes || '';
+          showToast(person.name + ' güncellendi!');
+        }
+      } else {
+        // Ekranda görünen alanın sol ��st köşesinden 150px içeride hesapla
+        const container = document.getElementById('treeContainer');
+        
+        // Container'ın sol üst köşesinden 150px içeride (container içi koordinat)
+        const targetContainerX = 150;
+        const targetContainerY = 150;
+        
+        // Container koordinatların�� canvas koordinatlarına çevir
+        // currentTranslateX/Y negatif ise sağa/aşağı kaymış demektir
+        const canvasX = (targetContainerX / currentScale) - currentTranslateX;
+        const canvasY = (targetContainerY / currentScale) - currentTranslateY;
+        
+        const newPerson = {
+          id: Date.now(),
+          name: name,
+          gender: gender,
+          birthYear: birthYear ? parseInt(birthYear) : null,
+          notes: notes || '',
+          x: canvasX,
+          y: canvasY,
+          spouse: null,
+          parents: [],
+          siblings: []
+        };
+        
+        people.push(newPerson);
+        
+        // Modalı kapat
+        document.getElementById('addPersonModal').classList.remove('active');
+        document.getElementById('addPersonForm').reset();
+        
+        renderTree();
+        showToast(newPerson.name + ' eklendi!');
+        
+        return;
+      }
+
+      renderTree();
+      document.getElementById('addPersonModal').classList.remove('active');
+      document.getElementById('addPersonForm').reset();
+      editingPersonId = null;
+    });
+
+    document.getElementById('closeRelModalBtn').addEventListener('click', closeRelationshipModal);
+    document.getElementById('cancelRelBtn').addEventListener('click', closeRelationshipModal);
+    
+    document.getElementById('spouseBtn').addEventListener('click', function() { 
+      createRelationship('spouse'); 
+    });
+    
+    document.getElementById('parentChildBtn').addEventListener('click', function() { 
+      createRelationship('parent-child'); 
+    });
+    
+    document.getElementById('childParentBtn').addEventListener('click', function() { 
+      createRelationship('child-parent'); 
+    });
+    
+    document.getElementById('siblingBtn').addEventListener('click', function() { 
+      createRelationship('sibling'); 
+    });
+    
+    document.getElementById('deleteRelationshipBtn').addEventListener('click', deleteExistingRelationship);
+
+    // Initialize - Auto-load from localStorage if available
+    function initializeApp() {
+      const savedData = localStorage.getItem(STORAGE_KEY);
+      
+      if (savedData) {
+        try {
+          const data = JSON.parse(savedData);
+          people = data.people;
+          renderTree();
+          
+          // Kartları ekranın ortasına getir
+          setTimeout(() => {
+            centerViewOnCards();
+          }, 100);
+          
+          showToast('🎉 Kaydedilmiş soy ağacı yüklendi!');
+        } catch (error) {
+          console.error('Yükleme hatası:', error);
+          renderTree();
+          setTimeout(() => {
+            centerViewOnCards();
+          }, 100);
+          showToast('Yeni soy ağacı başlatıldı!');
+        }
+      } else {
+        renderTree();
+        setTimeout(() => {
+          centerViewOnCards();
+        }, 100);
+        showToast('🎯 Tut-sürükle ile hareket ettirin!');
+      }
+    }
+
+    function centerViewOnCards() {
+      if (people.length === 0) return;
+      
+      const container = document.getElementById('treeContainer');
+      
+      // Tüm kartların sınırlarını bul
+      let minX = Infinity, minY = Infinity;
+      people.forEach(p => {
+        minX = Math.min(minX, p.x - CARD_WIDTH / 2);
+        minY = Math.min(minY, p.y - CARD_HEIGHT / 2);
+      });
+      
+      // Sol üst köşeden 50px boşluk bırak
+      const targetX = 30;
+      const targetY = 30;
+      
+      // En soldaki ve en üstteki kartı hedef pozisyona taşı
+      currentTranslateX = targetX / currentScale - minX;
+      currentTranslateY = targetY / currentScale - minY;
+      
+      applyZoomTransform();
+    }
+
+    initializeApp();
+  </script>
+ </body>
+</html>

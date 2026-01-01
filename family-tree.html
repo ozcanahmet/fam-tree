@@ -78,6 +78,24 @@
       overflow-x: auto;
       flex-wrap: nowrap;
     }
+#treeCanvas {
+    position: relative;
+    /* Önemli: Arka plan gridinin her yere yayılması için */
+    background-size: 50px 50px;
+    background-image: radial-gradient(circle, #334155 1px, transparent 1px);
+    overflow: visible !important; /* Dışarı taşan çizgileri kesme */
+}
+
+#svgConnections {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+    overflow: visible !important;
+}
 
     .tree-icon {
       width: 44px;
@@ -258,6 +276,22 @@
       border-color: #dc3545;
     }
 
+    .btn-import {
+    background-color: #28a745;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    width: 100%;
+    font-weight: bold;
+    transition: background 0.3s;
+}
+
+.btn-import:hover {
+    background-color: #218838;
+}
+
     @media (min-width: 768px) {
       .btn-icon-mobile {
         display: none;
@@ -316,12 +350,16 @@
       box-shadow: 0 2px 8px rgba(0,0,0,0.15);
       min-width: 120px;
       text-align: center;
-      z-index: 100;
+      z-index: 10;
       border: 3px solid rgba(255,255,255,0.3);
       user-select: none;
       touch-action: none;
     }
 
+.old-spouse-line {
+    stroke-dasharray: 5, 5; /* Kesik çizgi aralığı */
+    stroke: #999;           /* Eski eş çizgisini biraz daha soluk yapabilirsin */
+}
     .person-node.male {
       background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
     }
@@ -569,6 +607,8 @@
       z-index: 1;
     }
 
+
+
     .btn-full-width {
       width: 100%;
       margin-bottom: 10px;
@@ -704,6 +744,12 @@
      <h2>Kayıtlı Soy Ağaçları</h2><button class="close-btn" id="closeLoadModalBtn">×</button>
     </div>
     <div id="historyList" class="history-list"></div>
+    <div class="manual-import-section" style="margin-bottom: 20px; padding: 15px; border-bottom: 1px dashed #ccc;">
+    <button onclick="document.getElementById('fileInput').click()" class="btn-import">
+        📂 Cihazdan Yükle
+    </button>
+    <input type="file" id="fileInput" accept=".json" style="display:none" onchange="handleManualImport(event)">
+</div>
    </div>
   </div>
   <div id="personInfoModal" class="modal">
@@ -729,28 +775,68 @@
   </div>
   <div id="toast" class="toast"></div>
   <script>
-    const CARD_WIDTH = 120;
-    const CARD_HEIGHT = 80;
-    const STORAGE_KEY = 'familyTreeData';
-    const HISTORY_KEY = 'familyTreeHistory';
-    const MAX_HISTORY = 5;
+   const CARD_WIDTH = 120;
+const CARD_HEIGHT = 80;
+const STORAGE_KEY = 'familyTreeData_v2'; // İsim değiştirdim (Aşağıda nedenini açıkladım)
+const HISTORY_KEY = 'familyTreeHistory';
+const MAX_HISTORY = 5;
 
-    let people = [
-      { id: 1, name: 'Mehmet', gender: 'erkek', birthYear: 1950, notes: '', x: 10000, y: 10000, spouse: 2, parents: [], siblings: [] },
-      { id: 2, name: 'Ayşe', gender: 'kadin', birthYear: 1952, notes: '', x: 10200, y: 10000, spouse: 1, parents: [], siblings: [] },
-      { id: 3, name: 'Ahmet', gender: 'erkek', birthYear: 1975, notes: '', x: 10100, y: 10200, spouse: null, parents: [1, 2], siblings: [] }
-    ];
+let people = [
+  { 
+    id: 1, 
+    name: 'Mehmet', 
+    gender: 'erkek', 
+    birthYear: 1950, 
+    notes: '', 
+    x: 10000, 
+    y: 10000, 
+    spouse: 2,       // Şu anki aktif eş
+    spouses: [],     // YENİ EKLEME: Eski eşler listesi (Başlangıçta boş)
+    parents: [], 
+    children: [3], 
+    siblings: [] 
+  },
+  { 
+    id: 2, 
+    name: 'Ayşe', 
+    gender: 'kadin', 
+    birthYear: 1952, 
+    notes: '', 
+    x: 10200, 
+    y: 10000, 
+    spouse: 1,       // Şu anki aktif eş
+    spouses: [],     // YENİ EKLEME
+    parents: [], 
+    children: [3], 
+    siblings: [] 
+  },
+  { 
+    id: 3, 
+    name: 'Ahmet', 
+    gender: 'erkek', 
+    birthYear: 1975, 
+    notes: '', 
+    x: 10100, 
+    y: 10200, 
+    spouse: null, 
+    spouses: [],     // YENİ EKLEME
+    parents: [1, 2], 
+    siblings: [] 
+  }
+];
+window.people = people; // Bu satırı ekle
 
-    let selectedPerson = null;
-    let connectingPerson = null;
-    let draggedPerson = null;
-    let dragOffset = { x: 0, y: 0 };
-    let tempRelationship = { person1: null, person2: null };
-    let multiSelectMode = false;
-    let selectedPeople = new Set();
-    let draggedGroup = null;
-    let dragInitialPositions = null;
-    let editingPersonId = null;
+// Diğer değişkenler aynen kalabilir
+let selectedPerson = null;
+let connectingPerson = null;
+let draggedPerson = null;
+let dragOffset = { x: 0, y: 0 };
+let tempRelationship = { person1: null, person2: null };
+let multiSelectMode = false;
+let selectedPeople = new Set();
+let draggedGroup = null;
+let dragInitialPositions = null;
+let editingPersonId = null;
 
     // Zoom variables
     let currentScale = 1;
@@ -893,6 +979,98 @@
       document.getElementById('loadHistoryModal').classList.remove('active');
     }
 
+function handleManualImport(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      let rawData = JSON.parse(e.target.result);
+      let peopleToLoad = [];
+
+      // 1. ADIM: KATMANLARI SOYALIM
+      // Senin verin: [ { people: [...] } ] şeklinde başlıyor.
+      
+      if (Array.isArray(rawData)) {
+        if (rawData[0] && rawData[0].people && Array.isArray(rawData[0].people)) {
+          // Senin özel durumun: Dizinin ilk elemanının içindeki people dizisi
+          peopleToLoad = rawData[0].people;
+        } else {
+          // Normal dizi durumu
+          peopleToLoad = rawData;
+        }
+      } else if (rawData.people && Array.isArray(rawData.people)) {
+        // Obje içindeki people dizisi
+        peopleToLoad = rawData.people;
+      }
+
+      if (!peopleToLoad || peopleToLoad.length === 0) {
+        console.error("Ham veri çözümlenemedi:", rawData);
+        showToast('Hata: Geçerli kişi listesi bulunamadı!', true);
+        return;
+      }
+
+      // 2. ADIM: GLOBAL DİZİYE AKTARIM
+      const globalPeople = window.people || people;
+      globalPeople.length = 0; // İçini boşalt
+
+      // 3. ADIM: KOORDİNAT NORMALLEŞTİRME
+      // Senin verinde x: 9400, y: 10880 gibi uç değerler var.
+      let allX = peopleToLoad.map(p => Number(p.x) || 0);
+      let allY = peopleToLoad.map(p => Number(p.y) || 0);
+      let minX = Math.min(...allX);
+      let minY = Math.min(...allY);
+
+      peopleToLoad.forEach((p, index) => {
+        if (!p || typeof p !== 'object') return;
+
+        // Koordinatları 200,200 civarına çekiyoruz
+        p.x = (Number(p.x) || 0) - minX + 200;
+        p.y = (Number(p.y) || 0) - minY + 200;
+        
+        // Eksik alanları tamamla (parents, children vb.)
+        p.id = p.id || (Date.now() + index);
+        p.parents = p.parents || [];
+        p.children = p.children || []; // Yeni yapımız için kritik
+        p.spouses = p.spouses || [];
+
+        globalPeople.push(p);
+      });
+
+      // 4. ADIM: ÇİFT YÖNLÜ BAĞLARI ONAR (Ebeveynlerin children listesini doldur)
+      globalPeople.forEach(child => {
+        if (child.parents && child.parents.length > 0) {
+          child.parents.forEach(pId => {
+            const parent = globalPeople.find(pg => pg.id === pId);
+            if (parent) {
+              if (!parent.children) parent.children = [];
+              if (!parent.children.includes(child.id)) {
+                parent.children.push(child.id);
+              }
+            }
+          });
+        }
+      });
+
+      console.log("Başarıyla yüklenen gerçek kişi sayısı:", globalPeople.length);
+
+      // UI YENİLEME
+      closeLoadHistoryModal();
+      saveToLocalStorage();
+      renderTree();
+      
+      showToast(`✅ ${globalPeople.length} kişi başarıyla yüklendi!`);
+
+    } catch (error) {
+      console.error("Yükleme Hatası:", error);
+      showToast('❌ JSON dosyası okunamadı!', true);
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = ''; 
+}
+
     function showPersonInfo(person) {
       document.getElementById('infoModalName').textContent = person.name;
       document.getElementById('infoName').textContent = person.name;
@@ -923,57 +1101,98 @@
       }, 3000);
     }
 
-    function renderTree() {
-      const canvas = document.getElementById('treeCanvas');
-      const svg = document.getElementById('svgConnections');
-      
-      // Kartları temizle ama SVG'yi temizleme
-      const cards = canvas.querySelectorAll('.person-node');
-      cards.forEach(card => card.remove());
-      
-      svg.innerHTML = '';
+ function renderTree() {
+  console.log("--- RENDER BAŞLADI ---");
+  
+  let source = window.people || people;
+  if (!source || source.length === 0) {
+    console.error("HATA: Çizilecek veri bulunamadı!");
+    return;
+  }
 
-      // Calculate bounds needed for all people
-      let minX = 0;
-      let minY = 0;
-      let maxX = 1200;
-      let maxY = 800;
-      
-      people.forEach(person => {
-        minX = Math.min(minX, person.x - CARD_WIDTH / 2);
-        minY = Math.min(minY, person.y - CARD_HEIGHT / 2);
-        maxX = Math.max(maxX, person.x + CARD_WIDTH / 2);
-        maxY = Math.max(maxY, person.y + CARD_HEIGHT / 2);
-      });
+  const activePeople = source.filter(p => p && p.id && p.name);
+  const canvas = document.getElementById('treeCanvas');
+  const svg = document.getElementById('svgConnections');
+  
+  if (!canvas) return;
 
-      // Add dynamic padding (2-3x the distance from edge)
-      const dynamicPadding = 600; // 2-3 kat mesafe için bolca alan
-      minX -= dynamicPadding;
-      minY -= dynamicPadding;
-      maxX += dynamicPadding;
-      maxY += dynamicPadding;
-      
-      const canvasWidth = maxX - minX;
-      const canvasHeight = maxY - minY;
+  // --- 1. Dinamik Ofset Kilitleme (Sürükleme Deneyimini Düzelten Kısım) ---
+  let minX, minY, maxX, maxY;
 
-      // Set canvas and SVG dimensions
-      canvas.style.minWidth = canvasWidth + 'px';
-      canvas.style.minHeight = canvasHeight + 'px';
-      svg.setAttribute('width', canvasWidth);
-      svg.setAttribute('height', canvasHeight);
-      svg.style.width = canvasWidth + 'px';
-      svg.style.height = canvasHeight + 'px';
+  // Eğer bir kişi sürükleniyorsa, ofsetleri değiştirmeyelim ki ekran kaymasın
+  const isDraggingAnywhere = (typeof draggedPerson !== 'undefined' && draggedPerson !== null);
 
-      // Apply zoom transform
-      applyZoomTransform();
+  if (isDraggingAnywhere && canvas.dataset.lastMinX) {
+    // Sürükleme anında eski ofsetleri kullan
+    minX = parseFloat(canvas.dataset.lastMinX);
+    minY = parseFloat(canvas.dataset.lastMinY);
+    console.log("Sürükleme aktif: Ofsetler kilitlendi.");
+  } else {
+    // İlk açılışta veya sürükleme bittiğinde yeni ofsetleri hesapla
+    let tempMinX = Infinity, tempMinY = Infinity, tempMaxX = -Infinity, tempMaxY = -Infinity;
 
-      drawConnections(minX, minY);
+    activePeople.forEach(p => {
+      const x = Number(p.x) || 10000;
+      const y = Number(p.y) || 10000;
+      tempMinX = Math.min(tempMinX, x);
+      tempMinY = Math.min(tempMinY, y);
+      tempMaxX = Math.max(tempMaxX, x);
+      tempMaxY = Math.max(tempMaxY, y);
+    });
 
-      people.forEach(person => {
-        const node = createPersonNode(person, minX, minY);
-        canvas.appendChild(node);
-      });
+    const padding = 500;
+    minX = tempMinX - padding;
+    minY = tempMinY - padding;
+    maxX = tempMaxX + padding;
+    maxY = tempMaxY + padding;
+
+    // Hesaplanan değerleri "mıknatıslama" için kaydet
+    canvas.dataset.lastMinX = minX;
+    canvas.dataset.lastMinY = minY;
+  }
+
+  // --- 2. Boyutlandırma ---
+  const canvasWidth = (maxX || (minX + 2000)) - minX;
+  const canvasHeight = (maxY || (minY + 2000)) - minY;
+  
+  canvas.style.minWidth = canvasWidth + 'px';
+  canvas.style.minHeight = canvasHeight + 'px';
+
+  if (svg) {
+    svg.setAttribute('width', canvasWidth);
+    svg.setAttribute('height', canvasHeight);
+    svg.innerHTML = ''; // Temizle
+  }
+
+  // --- 3. Kartları Oluşturma ---
+  // Temizlik (Sadece person-node'ları sil, canvas'ın kendisini değil)
+  canvas.querySelectorAll('.person-node').forEach(n => n.remove());
+
+  activePeople.forEach((person) => {
+    try {
+      const node = createPersonNode(person, minX, minY);
+      if (node) canvas.appendChild(node);
+    } catch (err) {
+      console.error(`${person.name} hatası:`, err);
     }
+  });
+
+  // --- 4. Bağlantılar ve Zoom ---
+  // Çizgilerin kartlara tam oturması için hesaplanan minX/minY'yi gönderiyoruz
+  if (typeof drawConnections === 'function') {
+    drawConnections(minX, minY); 
+  }
+
+  if (typeof applyZoomTransform === 'function') {
+    applyZoomTransform();
+  }
+
+  console.log("--- RENDER BİTTİ ---");
+}
+
+// Global erişim için
+window.renderTree = renderTree;
+
 
     // Zoom functions
     function applyZoomTransform() {
@@ -1157,70 +1376,144 @@
       }
     });
 
-    function drawConnections(offsetX, offsetY) {
-      // Önce ebeveyn-çocuk bağlantılarını çiz
-      const processedParentGroups = new Set();
-      people.forEach(child => {
-        if (child.parents && child.parents.length > 0) {
-          const parentKey = [...child.parents].sort().join('-');
-          
-          if (!processedParentGroups.has(parentKey)) {
-            const children = people.filter(p => {
-              if (!p.parents || p.parents.length === 0) return false;
-              const pKey = [...p.parents].sort().join('-');
-              return pKey === parentKey;
-            });
-            
-            drawParentToChildrenConnection(child.parents, children, offsetX, offsetY);
-            processedParentGroups.add(parentKey);
-          }
-        }
-      });
-      
-      // Sonra eş bağlantılarını çiz
-      const drawnSpouses = new Set();
-      people.forEach(person => {
-        if (person.spouse && !drawnSpouses.has(person.id + '-' + person.spouse) && !drawnSpouses.has(person.spouse + '-' + person.id)) {
-          const spouse = people.find(p => p.id === person.spouse);
-          if (spouse) {
-            drawSpouseConnection(person, spouse, offsetX, offsetY);
-            drawnSpouses.add(person.id + '-' + person.spouse);
-          }
-        }
-      });
-      
-      // En son kardeş bağlantılarını çiz
-      const processedSiblingGroups = new Set();
-      people.forEach(person => {
-        if (person.siblings && person.siblings.length > 0) {
-          const siblingGroupIds = new Set([person.id, ...person.siblings]);
-          const groupKey = [...siblingGroupIds].sort().join('-');
-          
-          if (!processedSiblingGroups.has(groupKey)) {
-            const siblingGroup = people.filter(p => siblingGroupIds.has(p.id));
-            drawSiblingConnection(siblingGroup, offsetX, offsetY);
-            processedSiblingGroups.add(groupKey);
-          }
-        }
-      });
-    }
 
-    function drawSpouseConnection(person1, person2, offsetX, offsetY) {
-      const centerX1 = person1.x - offsetX;
-      const centerY1 = person1.y - offsetY;
-      const centerX2 = person2.x - offsetX;
-      const centerY2 = person2.y - offsetY;
-      
-      const horizontalOffset = 0;
-      const verticalOffset = CARD_HEIGHT / 2 + 70;
-      const verticalStartOffset = CARD_HEIGHT / 2 + 20;
-      
-      const connectionY = Math.max(centerY1, centerY2) + verticalOffset;
-      
-      drawSVGLine(centerX1 + horizontalOffset, centerY1 + verticalStartOffset, centerX1 + horizontalOffset, connectionY, '#f97316', 3);
-      drawSVGLine(centerX2 + horizontalOffset, centerY2 + verticalStartOffset, centerX2 + horizontalOffset, connectionY, '#f97316', 3);
-      drawSVGLine(centerX1 + horizontalOffset, connectionY, centerX2 + horizontalOffset, connectionY, '#f97316', 3);
-    }
+function drawConnections(offsetX, offsetY) {
+    const svg = document.getElementById('svgConnections');
+    if (!svg) return;
+    svg.innerHTML = ''; // Temizle
+
+    // 1. Veri Kaynağı Güvenliği
+    // window.people en güncel halidir, yoksa parametre/global people'a bak
+    const activePeople = window.people || (typeof people !== 'undefined' ? people : []);
+    
+    if (!Array.isArray(activePeople) || activePeople.length === 0) return;
+
+    // --- A. EBEVEYN - ÇOCUK BAĞLANTILARI (Yeşil Çizgiler) ---
+    const processedParentGroups = new Set();
+    
+    activePeople.forEach(child => {
+        // Parents dizisi var mı?
+        if (child.parents && Array.isArray(child.parents) && child.parents.length > 0) {
+            
+            // KRİTİK DÜZELTME: ID'leri sayıya çevirip sıralıyoruz.
+            // Böylece ["1", "2"] ile [1, 2] aynı grup sayılır.
+            const parentIds = child.parents.map(id => Number(id));
+            const parentKey = parentIds.sort((a, b) => a - b).join('-');
+
+            if (!processedParentGroups.has(parentKey)) {
+                // Bu ebeveyn grubuna ait tüm kardeşleri bul
+                const siblingGroup = activePeople.filter(p => {
+                    if (!p.parents || p.parents.length === 0) return false;
+                    const pKey = p.parents.map(id => Number(id)).sort((a, b) => a - b).join('-');
+                    return pKey === parentKey;
+                });
+                
+                // Çizim fonksiyonuna orijinal (raw) ID'leri değil, siblingGroup nesnelerini gönderiyoruz
+                if (typeof drawParentToChildrenConnection === 'function') {
+                    // child.parents (ID listesi) ve siblingGroup (Obje listesi)
+                    drawParentToChildrenConnection(child.parents, siblingGroup, offsetX, offsetY);
+                }
+                
+                processedParentGroups.add(parentKey);
+            }
+        }
+    });
+
+    // --- B. EŞ BAĞLANTILARI (Turuncu/Gri Çizgiler) ---
+    const drawnSpouses = new Set();
+    
+    activePeople.forEach(person => {
+        const pId = Number(person.id);
+
+        // 1. Aktif Eş
+        if (person.spouse) {
+            const sId = Number(person.spouse);
+            const activeKey = [pId, sId].sort((a, b) => a - b).join('-');
+            
+            if (!drawnSpouses.has(activeKey)) {
+                // Eşi bulurken gevşek eşitlik (==) veya Number dönüşümü kullan
+                const spouse = activePeople.find(p => Number(p.id) === sId);
+                
+                if (spouse && typeof drawSpouseConnection === 'function') {
+                    drawSpouseConnection(person, spouse, offsetX, offsetY, false); // false = Düz çizgi
+                    drawnSpouses.add(activeKey);
+                }
+            }
+        }
+
+        // 2. Eski Eşler
+        if (person.spouses && Array.isArray(person.spouses) && person.spouses.length > 0) {
+            person.spouses.forEach(rawSid => {
+                const sId = Number(rawSid);
+                const key = [pId, sId].sort((a, b) => a - b).join('-');
+                
+                if (!drawnSpouses.has(key)) {
+                    const formerSpouse = activePeople.find(p => Number(p.id) === sId);
+                    
+                    if (formerSpouse && typeof drawSpouseConnection === 'function') {
+                        drawSpouseConnection(person, formerSpouse, offsetX, offsetY, true); // true = Kesik çizgi
+                        drawnSpouses.add(key);
+                    }
+                }
+            });
+        }
+    });
+
+    // --- C. KARDEŞ BAĞLANTILARI (Mavi Çizgiler - Varsa) ---
+    const processedSiblingGroups = new Set();
+    
+    activePeople.forEach(person => {
+        if (person.siblings && Array.isArray(person.siblings) && person.siblings.length > 0) {
+            // Tüm ID'leri sayıya çevirip Set oluştur (Tekrarları önlemek için)
+            const allSiblingIds = new Set([Number(person.id), ...person.siblings.map(id => Number(id))]);
+            
+            // Benzersiz grup anahtarı
+            const groupKey = [...allSiblingIds].sort((a, b) => a - b).join('-');
+            
+            if (!processedSiblingGroups.has(groupKey)) {
+                // Sadece bu gruptaki kişileri filtrele
+                const siblingGroup = activePeople.filter(p => allSiblingIds.has(Number(p.id)));
+                
+                if (siblingGroup.length > 1 && typeof drawSiblingConnection === 'function') {
+                    drawSiblingConnection(siblingGroup, offsetX, offsetY);
+                }
+                processedSiblingGroups.add(groupKey);
+            }
+        }
+    });
+}
+
+function drawSpouseConnection(person1, person2, offsetX, offsetY, isFormer = false) {
+  // Koordinatları ofsetlere göre normalize et
+  const centerX1 = (Number(person1.x) || 0) - offsetX;
+  const centerY1 = (Number(person1.y) || 0) - offsetY;
+  const centerX2 = (Number(person2.x) || 0) - offsetX;
+  const centerY2 = (Number(person2.y) || 0) - offsetY;
+  
+  // Kart yüksekliği kontrolü (varsayılan 90px)
+  const cH = (typeof CARD_HEIGHT !== 'undefined') ? CARD_HEIGHT : 90;
+  
+  const horizontalOffset = 0;
+  const verticalOffset = cH / 2 + 70;      // Kartın altından ne kadar sarkacağı
+  const verticalStartOffset = cH / 2 + 20; // Kartın içinden/altından çıkış noktası
+  
+  // Bağlantı köprüsünün Y seviyesi (Hangi kart daha aşağıdaysa ona göre pay bırakır)
+  const connectionY = Math.max(centerY1, centerY2) + verticalOffset;
+  
+  // Stil ayarları
+  const dash = isFormer ? '5,5' : '';
+  const color = isFormer ? '#94a3b8' : '#f97316'; // Eski eş: Gri, Aktif eş: Turuncu
+  const strokeWidth = 3;
+
+  // 1. Hat: Birinci kişiden aşağı inen dikme
+  drawSVGLine(centerX1 + horizontalOffset, centerY1 + verticalStartOffset, centerX1 + horizontalOffset, connectionY, color, strokeWidth, dash);
+  
+  // 2. Hat: İkinci kişiden aşağı inen dikme
+  drawSVGLine(centerX2 + horizontalOffset, centerY2 + verticalStartOffset, centerX2 + horizontalOffset, connectionY, color, strokeWidth, dash);
+  
+  // 3. Hat: İki dikmeyi birleştiren yatay köprü
+  drawSVGLine(centerX1 + horizontalOffset, connectionY, centerX2 + horizontalOffset, connectionY, color, strokeWidth, dash);
+}
 
     function drawSiblingConnection(siblingGroup, offsetX, offsetY) {
       if (!siblingGroup || siblingGroup.length < 2) return;
@@ -1276,95 +1569,73 @@
       }
     }
 
-    function drawParentToChildrenConnection(parentIds, children, offsetX, offsetY) {
-      if (!parentIds || parentIds.length === 0 || !children || children.length === 0) return;
-      
-      const parents = parentIds.map(id => people.find(p => p.id === id)).filter(Boolean);
-      if (parents.length === 0) return;
-      
-      // Kesik çizgi SADECE: 1 ebeveyn VAR ve o ebeveynin EŞİ de VAR (ama eş çocuğun ebeveyni değil)
-      let isDashed = false;
-      if (parents.length === 1) {
-        const singleParent = parents[0];
-        if (singleParent.spouse) {
-          // Eşin bu çocuğun ebeveyni olup olmadığını kontrol et
-          const spouse = people.find(p => p.id === singleParent.spouse);
-          if (spouse) {
-            // Çocukların hiçbirinin ebeveynleri arasında eş yoksa kesik çizgi
-            const spouseIsParent = children.some(child => 
-              child.parents && child.parents.includes(spouse.id)
-            );
-            isDashed = !spouseIsParent;
-          }
-        }
-      }
-      const dashArray = isDashed ? '5,5' : '';
-      
-      const horizontalOffset = 0;
-      const greenHorizontalOffset = 0;
-      
-      const maxParentY = Math.max(...parents.map(p => p.y));
-      
-      const parent1 = parents[0];
-      const parent2 = parents.length > 1 ? parents[1] : parent1;
-      const spouseConnectionMidX = ((parent1.x + parent2.x) / 2) + horizontalOffset - offsetX;
-      
-      const parentConnectionY = maxParentY + CARD_HEIGHT / 2 + 70 - offsetY;
-      
-      // Kardeşlik çizgisi var mı kontrol et
-      const firstChild = children[0];
-      const hasSiblings = firstChild.siblings && firstChild.siblings.length > 0;
-      
-      let childConnectionY;
-      let greenLineX;
-      
-      if (hasSiblings) {
-        // Kardeşler varsa: Mavi yatay çizginin Y konumunu kullan
-        const childrenAvgY = children.reduce((sum, c) => sum + c.y, 0) / children.length;
-        childConnectionY = childrenAvgY - CARD_HEIGHT / 2 - 20 - offsetY; // mavi çizgi ile aynı
-        
-        // Yeşil dikey çizgiyi mavi çizginin ortasına yerleştir
-        const minChildX = Math.min(...children.map(c => c.x));
-        const maxChildX = Math.max(...children.map(c => c.x));
-        greenLineX = ((minChildX + maxChildX) / 2) + greenHorizontalOffset - offsetX;
-      } else {
-        // Kardeş yoksa: Eski mantığı kullan
-        const childrenAvgX = children.reduce((sum, c) => sum + c.x, 0) / children.length;
-        const childrenAvgY = children.reduce((sum, c) => sum + c.y, 0) / children.length;
-        greenLineX = childrenAvgX + greenHorizontalOffset - offsetX;
-        childConnectionY = childrenAvgY - CARD_HEIGHT / 2 - 70 - offsetY;
-      }
-      
-      const safeChildConnectionY = childConnectionY;
-      
-      drawSVGLine(spouseConnectionMidX, parentConnectionY, spouseConnectionMidX, safeChildConnectionY, '#10b981', 3, dashArray);
-      drawSVGLine(spouseConnectionMidX, safeChildConnectionY, greenLineX, safeChildConnectionY, '#10b981', 3, dashArray);
-      
-      // Çocuklara bağlanan dikey çizgileri her zaman çiz
-      children.forEach(child => {
-        const cardTop = child.y - CARD_HEIGHT / 2 - offsetY;
-        drawSVGLine(child.x + greenHorizontalOffset - offsetX, safeChildConnectionY, child.x + greenHorizontalOffset - offsetX, cardTop, '#10b981', 3, dashArray);
-      });
-    }
+  function drawParentToChildrenConnection(parentIds, children, offsetX, offsetY) {
+  if (!parentIds || parentIds.length === 0 || !children || children.length === 0) return;
+  const source = window.people || people;
 
-    function drawSVGLine(x1, y1, x2, y2, color, width, dashArray = '', zIndex = 1) {
-      const svg = document.getElementById('svgConnections');
-      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-      
-      line.setAttribute('x1', x1);
-      line.setAttribute('y1', y1);
-      line.setAttribute('x2', x2);
-      line.setAttribute('y2', y2);
-      line.setAttribute('stroke', color);
-      line.setAttribute('stroke-width', width);
-      line.style.zIndex = zIndex;
-      if (dashArray) {
-        line.setAttribute('stroke-dasharray', dashArray);
-      }
-      
-      svg.appendChild(line);
-    }
+  // 1. Ebeveynleri Bul
+  const parents = parentIds.map(id => source.find(p => p.id == id)).filter(Boolean);
+  if (parents.length === 0) return;
 
+  // 2. Koordinat Hesaplamaları
+  const cH = (typeof CARD_HEIGHT !== 'undefined') ? CARD_HEIGHT : 90;
+
+  // A. EBEVEYN ÇIKIŞ NOKTASI (Üstteki Turuncu Hattın Ortası)
+  const p1 = parents[0];
+  const p2 = parents.length > 1 ? parents[1] : p1;
+  const spouseMidX = ((p1.x + p2.x) / 2) - offsetX;
+  const maxParentY = Math.max(p1.y, p2.y);
+  const parentConnectionY = maxParentY + cH / 2 + 70 - offsetY;
+
+  // B. MAVİ ÇİZGİ (KARDEŞLER) ORTA NOKTASI
+  // Çocukların en soldaki ve en sağdaki olanını bulup merkezini hesaplıyoruz
+  const childrenX = children.map(c => c.x);
+  const minChildX = Math.min(...childrenX);
+  const maxChildX = Math.max(...childrenX);
+  const siblingsMidX = ((minChildX + maxChildX) / 2) - offsetX;
+
+  // Mavi çizginin (Kardeş barı) Y seviyesi
+  const minChildY = Math.min(...children.map(c => c.y));
+  const siblingsBarY = minChildY - cH / 2 - 20 - offsetY;
+
+  // 3. ÇİZİM İŞLEMİ (Sadece 2 veya 3 Çizgi)
+  
+  // Çizgi Tipi
+  let isDashed = false; // Daha önceki mantığın aynısı...
+  const dashArray = isDashed ? '5,5' : '';
+
+  // 1. ADIM: Ebeveynlerden dikey iniş (Kardeş barı seviyesine kadar)
+  drawSVGLine(spouseMidX, parentConnectionY, spouseMidX, siblingsBarY, '#10b981', 3, dashArray);
+
+  // 2. ADIM: Eğer ebeveynlerin ortası ile kardeşlerin ortası aynı hizada değilse
+  // (Yani çocuklar ebeveynlere göre sağa/sola kayıksa) yatay küçük bir yeşil bağlantı çiz
+  if (Math.abs(spouseMidX - siblingsMidX) > 1) {
+    drawSVGLine(spouseMidX, siblingsBarY, siblingsMidX, siblingsBarY, '#10b981', 3, dashArray);
+  }
+}
+
+
+function drawSVGLine(x1, y1, x2, y2, color, strokeWidth, dashArray = '') {
+  const svg = document.getElementById('svgConnections');
+  if (!svg) return;
+
+  const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  line.setAttribute('x1', x1);
+  line.setAttribute('y1', y1);
+  line.setAttribute('x2', x2);
+  line.setAttribute('y2', y2);
+  line.setAttribute('stroke', color);
+  line.setAttribute('stroke-width', strokeWidth);
+  
+  if (dashArray) {
+    line.setAttribute('stroke-dasharray', dashArray);
+  }
+  
+  // Çizgilere bir sınıf vererek CSS ile de yönetebilirsin
+  line.setAttribute('class', 'tree-connection-line');
+  
+  svg.appendChild(line);
+}
     function handlePersonClick(person) {
       if (multiSelectMode) {
         if (selectedPeople.has(person.id)) {
@@ -1408,128 +1679,132 @@
       }
     }
 
-    function createPersonNode(person, offsetX, offsetY) {
-      const node = document.createElement('div');
-      node.className = 'person-node ' + (person.gender === 'erkek' ? 'male' : 'female');
-      
-      if (selectedPerson && selectedPerson.id === person.id) {
-        node.classList.add('selected');
-      }
-      if (connectingPerson && connectingPerson.id === person.id) {
-        node.classList.add('connecting');
-      }
-      if (multiSelectMode && selectedPeople.has(person.id)) {
-        node.classList.add('multi-selected');
-      }
+function createPersonNode(person, offsetX, offsetY) {
+  // 1. ADIM: Sayısal Değer Kontrolü (NaN Koruması)
+  // Eğer person.x veya offsetX sayı değilse, varsayılan olarak 0 kabul et
+  const px = Number(person.x) || 0;
+  const py = Number(person.y) || 0;
+  const ox = Number(offsetX) || 0;
+  const oy = Number(offsetY) || 0;
 
-      node.style.left = (person.x - CARD_WIDTH / 2 - offsetX) + 'px';
-      node.style.top = (person.y - CARD_HEIGHT / 2 - offsetY) + 'px';
+  const node = document.createElement('div');
+  
+  // Cinsiyet sınıfını güvenli al (erkek/male, kadin/female eşleşmesi)
+  const genderClass = (person.gender === 'erkek' || person.gender === 'male') ? 'male' : 'female';
+  node.className = 'person-node ' + genderClass;
+  
+  // 2. ADIM: Durum Sınıfları
+  if (typeof selectedPerson !== 'undefined' && selectedPerson && selectedPerson.id === person.id) {
+    node.classList.add('selected');
+  }
+  if (typeof connectingPerson !== 'undefined' && connectingPerson && connectingPerson.id === person.id) {
+    node.classList.add('connecting');
+  }
+  if (typeof multiSelectMode !== 'undefined' && multiSelectMode && typeof selectedPeople !== 'undefined' && selectedPeople.has(person.id)) {
+    node.classList.add('multi-selected');
+  }
 
-      node.innerHTML = `
-        <div class="person-name">${person.name}</div>
-        <div style="margin-top: 8px;">
-          <span class="info-icon" data-person-id="${person.id}">
-            <svg viewBox="0 0 24 24" stroke-width="2">
-              <circle cx="12" cy="12" r="10"/>
-              <line x1="12" y1="16" x2="12" y2="12"/>
-              <line x1="12" y1="8" x2="12.01" y2="8"/>
-            </svg>
-          </span>
-        </div>
-      `;
+  // 3. ADIM: Pozisyon Hesaplama (Geliştirilmiş)
+  // CARD_WIDTH ve CARD_HEIGHT'in tanımlı olduğundan emin ol
+  const cWidth = typeof CARD_WIDTH !== 'undefined' ? CARD_WIDTH : 150;
+  const cHeight = typeof CARD_HEIGHT !== 'undefined' ? CARD_HEIGHT : 80;
 
-      // Info icon click handler
-      const infoIcon = node.querySelector('.info-icon');
-      infoIcon.addEventListener('click', (e) => {
-        e.stopPropagation();
-        showPersonInfo(person);
-      });
+  const leftPos = (px - (cWidth / 2) - ox);
+  const topPos = (py - (cHeight / 2) - oy);
 
-      let dragStartTime = 0;
-      let dragStartPos = { x: 0, y: 0 };
-      let hasMoved = false;
+  node.style.left = leftPos + 'px';
+  node.style.top = topPos + 'px';
 
-      // Mouse events
-      node.addEventListener('mousedown', (e) => {
-        if (e.target.tagName === 'BUTTON') return;
-        dragStartTime = Date.now();
-        dragStartPos = { x: e.clientX, y: e.clientY };
-        hasMoved = false;
-        startDrag(e, person);
-      });
+  // Konsol Logu: Eğer kart 0,0 civarındaysa veya çok uzaktaysa buradan takip et
+  // console.log(`Çiziliyor: ${person.name} -> Left: ${node.style.left}, Top: ${node.style.top}`);
 
-      node.addEventListener('click', (e) => {
-        if (e.target.tagName === 'BUTTON') return;
-        
-        const clickDuration = Date.now() - dragStartTime;
-        const distance = Math.sqrt(
-          Math.pow(e.clientX - dragStartPos.x, 2) + 
-          Math.pow(e.clientY - dragStartPos.y, 2)
-        );
-        
-        if (clickDuration < 300 && distance < 10 && !hasMoved) {
-          handlePersonClick(person);
-        }
-        e.stopPropagation();
-      });
+  node.innerHTML = `
+    <div class="person-name">${person.name || 'İsimsiz'}</div>
+    <div style="margin-top: 8px;">
+      <span class="info-icon" data-person-id="${person.id}">
+        <svg viewBox="0 0 24 24" stroke-width="2" width="16" height="16" fill="none" stroke="currentColor">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="16" x2="12" y2="12"/>
+          <line x1="12" y1="8" x2="12.01" y2="8"/>
+        </svg>
+      </span>
+    </div>
+  `;
 
-      // Touch events for mobile - IMPROVED
-      let touchStartTime = 0;
-      let touchHasMoved = false;
-      let touchStartPosition = { x: 0, y: 0 };
-      
-      node.addEventListener('touchstart', (e) => {
-        if (e.target.tagName === 'BUTTON') return;
-        
-        const touch = e.touches[0];
-        touchStartTime = Date.now();
-        touchHasMoved = false;
-        touchStartPosition = { x: touch.clientX, y: touch.clientY };
-        
-        // Mobilde seçim modu aktifse sürüklemeye izin ver
-        const isMobile = window.innerWidth < 768;
-        if (isMobile && !multiSelectMode) {
-          // Seçim modu kapalıysa sadece tıklama için izin ver, sür��kleme yok
-          return;
-        }
-        
-        // Masaüstünde veya seçim modu açıksa sürüklemeyi başlat
-        startDragTouch(touch, person);
-        e.preventDefault();
-      }, { passive: false });
+  // 4. ADIM: Event Listenerlar
+  const infoIcon = node.querySelector('.info-icon');
+  infoIcon.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (typeof showPersonInfo === 'function') showPersonInfo(person);
+  });
 
-      node.addEventListener('touchmove', (e) => {
-        if (e.target.tagName === 'BUTTON') return;
-        
-        const touch = e.touches[0];
-        const distance = Math.sqrt(
-          Math.pow(touch.clientX - touchStartPosition.x, 2) + 
-          Math.pow(touch.clientY - touchStartPosition.y, 2)
-        );
-        
-        // 10 pikselden fazla hareket = sürükleme
-        if (distance > 10) {
-          touchHasMoved = true;
-        }
-      }, { passive: false });
+  let dragStartTime = 0;
+  let dragStartPos = { x: 0, y: 0 };
+  let hasMoved = false;
 
-      node.addEventListener('touchend', (e) => {
-        if (e.target.tagName === 'BUTTON') return;
-        
-        const touchDuration = Date.now() - touchStartTime;
-        
-        // Kısa dokunma ve az hareket = seçim/bağlantı
-        if (touchDuration < 300 && !touchHasMoved) {
-          handlePersonClick(person);
-        }
-        
-        stopDragTouch();
-        e.preventDefault();
-      });
+  node.addEventListener('mousedown', (e) => {
+    if (e.target.closest('button') || e.target.closest('.info-icon')) return;
+    dragStartTime = Date.now();
+    dragStartPos = { x: e.clientX, y: e.clientY };
+    hasMoved = false;
+    if (typeof startDrag === 'function') startDrag(e, person);
+  });
 
-      return node;
+  node.addEventListener('click', (e) => {
+    if (e.target.closest('button') || e.target.closest('.info-icon')) return;
+    
+    const clickDuration = Date.now() - dragStartTime;
+    const distance = Math.sqrt(
+      Math.pow(e.clientX - dragStartPos.x, 2) + 
+      Math.pow(e.clientY - dragStartPos.y, 2)
+    );
+    
+    if (clickDuration < 300 && distance < 10 && !hasMoved) {
+      if (typeof handlePersonClick === 'function') handlePersonClick(person);
     }
+    e.stopPropagation();
+  });
 
+  // Mobil Dokunmatik Olaylar
+  let touchStartTime = 0;
+  let touchHasMoved = false;
+  let touchStartPosition = { x: 0, y: 0 };
+  
+  node.addEventListener('touchstart', (e) => {
+    if (e.target.closest('button') || e.target.closest('.info-icon')) return;
+    
+    const touch = e.touches[0];
+    touchStartTime = Date.now();
+    touchHasMoved = false;
+    touchStartPosition = { x: touch.clientX, y: touch.clientY };
+    
+    const isMobile = window.innerWidth < 768;
+    // Multi-select veya Masaüstü modunda sürüklemeye izin ver
+    if (!isMobile || (typeof multiSelectMode !== 'undefined' && multiSelectMode)) {
+        if (typeof startDragTouch === 'function') startDragTouch(touch, person);
+        e.preventDefault();
+    }
+  }, { passive: false });
+
+  node.addEventListener('touchmove', (e) => {
+    const touch = e.touches[0];
+    const distance = Math.sqrt(
+      Math.pow(touch.clientX - touchStartPosition.x, 2) + 
+      Math.pow(touch.clientY - touchStartPosition.y, 2)
+    );
+    if (distance > 10) touchHasMoved = true;
+  }, { passive: false });
+
+  node.addEventListener('touchend', (e) => {
+    const touchDuration = Date.now() - touchStartTime;
+    if (touchDuration < 300 && !touchHasMoved) {
+      if (typeof handlePersonClick === 'function') handlePersonClick(person);
+    }
+    if (typeof stopDragTouch === 'function') stopDragTouch();
+  });
+
+  return node;
+}
     function startDrag(e, person) {
       draggedPerson = person;
       
@@ -1674,35 +1949,73 @@
       renderTree();
     }
 
-    function stopDrag() {
-      draggedPerson = null;
-      draggedGroup = null;
-      dragInitialPositions = null;
-      document.removeEventListener('mousemove', drag);
-      document.removeEventListener('mouseup', stopDrag);
+ function stopDrag() {
+  // Eğer bir kişi gerçekten sürüklendiyse (verisi varsa)
+  if (draggedPerson) {
+    // 1. Veriyi LocalStorage'a kaydet (Kalıcı olması için)
+    if (typeof saveToLocalStorage === 'function') {
+      saveToLocalStorage();
     }
+    
+    // 2. TÜM AĞACI YENİDEN ÇİZ (Çizgilerin kartlara yapışmasını sağlayan kritik adım)
+    if (typeof renderTree === 'function') {
+      renderTree();
+    }
+  }
+
+  // Değişkenleri sıfırla
+  draggedPerson = null;
+  draggedGroup = null;
+  dragInitialPositions = null;
+  
+  // Event listener'ları temizle
+  document.removeEventListener('mousemove', drag);
+  document.removeEventListener('mouseup', stopDrag);
+}
 
     function stopDragTouch() {
-      draggedPerson = null;
-      draggedGroup = null;
-      dragInitialPositions = null;
-      document.removeEventListener('touchmove', dragTouch);
-      document.removeEventListener('touchend', stopDragTouch);
+  // 1. Eğer bir sürükleme işlemi yapıldıysa güncellemeleri yap
+  if (draggedPerson || draggedGroup) {
+    // Çizgilerin kartlara yapışmasını sağla ve yeni konumları hesapla
+    if (typeof renderTree === 'function') {
+      renderTree();
     }
-
-    function editPerson(personId) {
-      const person = people.find(p => p.id === personId);
-      if (!person) return;
-
-      editingPersonId = personId;
-      document.getElementById('modalTitle').textContent = 'Kişiyi Düzenle';
-      document.getElementById('personName').value = person.name;
-      document.getElementById('personGender').value = person.gender;
-      document.getElementById('personBirthYear').value = person.birthYear || '';
-      document.getElementById('personNotes').value = person.notes || '';
-      
-      document.getElementById('addPersonModal').classList.add('active');
+    
+    // Değişiklikleri kalıcı hafızaya kaydet
+    if (typeof saveToLocalStorage === 'function') {
+      saveToLocalStorage();
     }
+  }
+
+  // 2. Sürükleme değişkenlerini sıfırla
+  draggedPerson = null;
+  draggedGroup = null;
+  dragInitialPositions = null;
+  
+  // 3. Event listener'ları kaldır (Bellek yönetimi için önemli)
+  document.removeEventListener('touchmove', dragTouch);
+  document.removeEventListener('touchend', stopDragTouch);
+}
+
+function editPerson(personId) {
+  const person = people.find(p => p.id === personId);
+  if (!person) return;
+
+  editingPersonId = personId;
+  document.getElementById('modalTitle').textContent = 'Kişiyi Düzenle';
+  document.getElementById('personName').value = person.name;
+  document.getElementById('personGender').value = person.gender;
+  document.getElementById('personBirthYear').value = person.birthYear || '';
+  document.getElementById('personNotes').value = person.notes || '';
+  
+  // --- EKLEMEN GEREKEN SATIR ---
+  // Mevcut eşi seçili hale getirir (Eğer person.spouse varsa)
+  if (document.getElementById('personSpouse')) {
+    document.getElementById('personSpouse').value = person.spouse || '';
+  }
+  
+  document.getElementById('addPersonModal').classList.add('active');
+}
 
     function deletePerson(personId, buttonElement) {
       const person = people.find(p => p.id === personId);
@@ -1901,14 +2214,7 @@
         if (person1.spouse === person2.id) {
           return { valid: false, message: 'Eşler ebeveyn-çocuk olamaz!' };
         }
-        
-        // EŞ-ÇOCUK ÇAKIŞMASI: Person1'in eşi Person2'nin ebeveyni ise engelle
-        if (person1.spouse) {
-          const spouse = people.find(p => p.id === person1.spouse);
-          if (spouse && person2.parents && person2.parents.includes(spouse.id)) {
-            return { valid: false, message: 'Eşinizin çocuğunun ebeveyni olamazsınız!' };
-          }
-        }
+    
         
         // EŞ-ÇOCUK ÇAKIŞMASI: Person2'nin eşi Person1'in çocuğu ise engelle
         if (person2.spouse) {
@@ -2082,172 +2388,178 @@
       }
     }
 
-    function autoCompleteFamily(child, parent, relType) {
-      const autoConnections = [];
-      
-      if (relType === 'parent-child' || relType === 'child-parent') {
-        // Ebeveyn ekleme - sadece 2 ebeveyn varsa ve ikisi de eş değilse eş yap
-        if (child.parents && child.parents.length === 2) {
-          const parent1 = people.find(p => p.id === child.parents[0]);
-          const parent2 = people.find(p => p.id === child.parents[1]);
-          
-          if (parent1 && parent2 && !parent1.spouse && !parent2.spouse && parent1.gender !== parent2.gender) {
-            parent1.spouse = parent2.id;
-            parent2.spouse = parent1.id;
-            autoConnections.push(parent1.name + ' <-> ' + parent2.name + ' (Eş)');
-          }
+function autoCompleteFamily(child, parent, relType) {
+    const autoConnections = [];
+    
+    if (relType === 'parent-child' || relType === 'child-parent') {
+        // ID'leri değil, objelerin kendilerini aldığımızdan emin olalım
+        const theChild = relType === 'parent-child' ? parent : child;
+        const theParent = relType === 'parent-child' ? child : parent;
+
+        // parents dizisi yoksa oluştur
+        if (!theChild.parents) theChild.parents = [];
+
+        // KURAL: Eğer çocuğun şu an 1 ebeveyni varsa ve o ebeveynin sadece 1 AKTİF eşi varsa
+        if (theChild.parents.length === 1) {
+            const firstParentId = theChild.parents[0];
+            const firstParent = people.find(p => p.id === firstParentId);
+            
+            if (firstParent && firstParent.spouse) {
+                // Eski eşi (spouses dizisi) var mı kontrol et
+                const hasHistory = firstParent.spouses && firstParent.spouses.length > 0;
+                
+                // Sadece net durumda (geçmişi yoksa) otomatik ekle
+                if (!hasHistory) {
+                    const secondParentId = firstParent.spouse;
+                    if (!theChild.parents.includes(secondParentId)) {
+                        theChild.parents.push(secondParentId);
+                        const p2 = people.find(p => p.id === secondParentId);
+                        if (p2) autoConnections.push(p2.name + " eklendi.");
+                    }
+                }
+            }
         }
-        
-        // *** KALDIRILDI: Eşin otomatik çocuk olarak eklenmesi ***
-        // Artık eş varsa otomatik olarak çocuğun ebeveyni yapılmaz
-      }
-      
-      if (relType === 'spouse') {
-        const person1 = child;
-        const person2 = parent;
-        
-        people.forEach(potentialChild => {
-          if (potentialChild.parents && potentialChild.parents.includes(person1.id)) {
-            if (!potentialChild.parents.includes(person2.id)) {
-              potentialChild.parents.push(person2.id);
-              autoConnections.push(person2.name + ' -> ' + potentialChild.name + ' (Ebeveyn)');
-              autoLinkSiblings(potentialChild);
-            }
-          }
-        });
-        
-        people.forEach(potentialChild => {
-          if (potentialChild.parents && potentialChild.parents.includes(person2.id)) {
-            if (!potentialChild.parents.includes(person1.id)) {
-              potentialChild.parents.push(person1.id);
-              autoConnections.push(person1.name + ' -> ' + potentialChild.name + ' (Ebeveyn)');
-              autoLinkSiblings(potentialChild);
-            }
-          }
-        });
-      }
-      
-      if (relType === 'sibling') {
-        const person1 = child;
-        const person2 = parent;
-        
-        // Person1'in ebeveyni varsa Person2'ye aktar
-        if (person1.parents && person1.parents.length > 0) {
-          if (!person2.parents) person2.parents = [];
-          person1.parents.forEach(parentId => {
-            if (!person2.parents.includes(parentId)) {
-              person2.parents.push(parentId);
-              const parentPerson = people.find(p => p.id === parentId);
-              if (parentPerson) {
-                autoConnections.push(parentPerson.name + ' -> ' + person2.name + ' (Ebeveyn)');
-              }
-            }
-          });
+    }
+    
+if (relType === 'sibling') {
+    const person1 = child;
+    const person2 = parent;
+    
+    if (person1.parents && person1.parents.length > 0) {
+      if (!person2.parents) person2.parents = [];
+      person1.parents.forEach(parentId => {
+        if (!person2.parents.includes(parentId)) {
+          person2.parents.push(parentId);
+          const parentPerson = people.find(p => p.id === parentId);
+          if (parentPerson) autoConnections.push(parentPerson.name + ' -> ' + person2.name + ' (Ebeveyn)');
         }
-        
-        // Person2'nin ebeveyni varsa Person1'e aktar
-        if (person2.parents && person2.parents.length > 0) {
-          if (!person1.parents) person1.parents = [];
-          person2.parents.forEach(parentId => {
-            if (!person1.parents.includes(parentId)) {
-              person1.parents.push(parentId);
-              const parentPerson = people.find(p => p.id === parentId);
-              if (parentPerson) {
-                autoConnections.push(parentPerson.name + ' -> ' + person1.name + ' (Ebeveyn)');
-              }
-            }
-          });
-        }
-        
-        // Her iki karde��i de otomatik kardeş linklemeden geçir
-        autoLinkSiblings(person1);
-        autoLinkSiblings(person2);
-      }
-      
-      if (autoConnections.length > 0) {
-        const message = 'Otomatik bağlantılar:\n' + autoConnections.join('\n');
-        showToast(message);
-      }
+      });
     }
 
-    function createRelationship(type) {
-      const person1 = tempRelationship.person1;
-      const person2 = tempRelationship.person2;
-      
-      if (!person1 || !person2) return;
+    if (person2.parents && person2.parents.length > 0) {
+      if (!person1.parents) person1.parents = [];
+      person2.parents.forEach(parentId => {
+        if (!person1.parents.includes(parentId)) {
+          person1.parents.push(parentId);
+          const parentPerson = people.find(p => p.id === parentId);
+          if (parentPerson) autoConnections.push(parentPerson.name + ' -> ' + person1.name + ' (Ebeveyn)');
+        }
+      });
+    }
+    autoLinkSiblings(person1);
+    autoLinkSiblings(person2);
+  }
 
-      const validation = validateRelationship(person1, person2, type);
-      if (!validation.valid) {
+     if (autoConnections.length > 0) {
+    const message = 'Otomatik bağlantılar:\n' + autoConnections.join('\n');
+    showToast(message);
+  }
+}
+
+
+
+  
+
+
+
+
+function createRelationship(type) {
+    const person1 = tempRelationship.person1;
+    const person2 = tempRelationship.person2;
+    
+    if (!person1 || !person2) return;
+
+    const validation = validateRelationship(person1, person2, type);
+    if (!validation.valid) {
         showToast(validation.message, true);
         return;
-      }
+    }
 
-      if (type === 'spouse') {
-        if (person1.spouse) {
-          const oldSpouse = people.find(p => p.id === person1.spouse);
-          if (oldSpouse) oldSpouse.spouse = null;
+    if (type === 'spouse') {
+        // --- PERSON 1 İÇİN ESKİ EŞİ YEDEKLE ---
+        if (person1.spouse && person1.spouse !== person2.id) {
+            if (!person1.spouses) person1.spouses = [];
+            if (!person1.spouses.includes(person1.spouse)) {
+                person1.spouses.push(person1.spouse); // Eski eşi diziye at
+            }
+            // Eski eşin verisini de güncelle
+            const oldSpouse1 = people.find(p => p.id === person1.spouse);
+            if (oldSpouse1) {
+                oldSpouse1.spouse = null;
+                if (!oldSpouse1.spouses) oldSpouse1.spouses = [];
+                if (!oldSpouse1.spouses.includes(person1.id)) oldSpouse1.spouses.push(person1.id);
+            }
         }
-        if (person2.spouse) {
-          const oldSpouse = people.find(p => p.id === person2.spouse);
-          if (oldSpouse) oldSpouse.spouse = null;
+
+        // --- PERSON 2 İÇİN ESKİ EŞİ YEDEKLE ---
+        if (person2.spouse && person2.spouse !== person1.id) {
+            if (!person2.spouses) person2.spouses = [];
+            if (!person2.spouses.includes(person2.spouse)) {
+                person2.spouses.push(person2.spouse); // Eski eşi diziye at
+            }
+            // Diğer eski eşin verisini güncelle
+            const oldSpouse2 = people.find(p => p.id === person2.spouse);
+            if (oldSpouse2) {
+                oldSpouse2.spouse = null;
+                if (!oldSpouse2.spouses) oldSpouse2.spouses = [];
+                if (!oldSpouse2.spouses.includes(person2.id)) oldSpouse2.spouses.push(person2.id);
+            }
         }
+
+        // YENİ AKTİF BAĞLANTIYI KUR
         person1.spouse = person2.id;
         person2.spouse = person1.id;
+        
         autoCompleteFamily(person1, person2, 'spouse');
         showToast(person1.name + ' ve ' + person2.name + ' eş oldu!');
-      } 
-      else if (type === 'parent-child') {
-        if (!person2.parents) person2.parents = [];
-        if (!person2.parents.includes(person1.id)) {
-          person2.parents.push(person1.id);
-        }
-        
-        // KARDEŞ GRUBU OTOMATİK BAĞLAMA
-        // Person2'nin kardeşleri varsa, onları da aynı ebeveyni bağla
-        if (person2.siblings && person2.siblings.length > 0) {
-          person2.siblings.forEach(siblingId => {
-            const sibling = people.find(p => p.id === siblingId);
-            if (sibling) {
-              if (!sibling.parents) sibling.parents = [];
-              if (!sibling.parents.includes(person1.id)) {
-                sibling.parents.push(person1.id);
-                autoCompleteFamily(sibling, person1, 'parent-child');
-                autoLinkSiblings(sibling);
-              }
-            }
-          });
-        }
-        
-        autoCompleteFamily(person2, person1, 'parent-child');
-        autoLinkSiblings(person2);
-        showToast(person1.name + ', ' + person2.name + '\'in ebeveyni oldu!');
-      }
-      else if (type === 'child-parent') {
-        if (!person1.parents) person1.parents = [];
-        if (!person1.parents.includes(person2.id)) {
-          person1.parents.push(person2.id);
-        }
-        
-        // KARDEŞ GRUBU OTOMATİK BAĞLAMA (TERS YÖN)
-        // Person1'in kardeşleri varsa, onları da aynı ebeveyni bağla
-        if (person1.siblings && person1.siblings.length > 0) {
-          person1.siblings.forEach(siblingId => {
-            const sibling = people.find(p => p.id === siblingId);
-            if (sibling) {
-              if (!sibling.parents) sibling.parents = [];
-              if (!sibling.parents.includes(person2.id)) {
-                sibling.parents.push(person2.id);
-                autoCompleteFamily(sibling, person2, 'child-parent');
-                autoLinkSiblings(sibling);
-              }
-            }
-          });
-        }
-        
-        autoCompleteFamily(person1, person2, 'child-parent');
-        autoLinkSiblings(person1);
-        showToast(person2.name + ', ' + person1.name + '\'in ebeveyni oldu!');
-      }
+    } 
+
+else if (type === 'parent-child') {
+    // person1: Ebeveyn, person2: Çocuk
+
+    // 1. Çocuğun (person2) parents dizisini kontrol et ve ekle
+    if (!person2.parents) person2.parents = [];
+    if (!person2.parents.includes(person1.id)) {
+        person2.parents.push(person1.id);
+    }
+
+    // 2. Ebeveynin (person1) children dizisini kontrol et ve ekle (Yeni Eklenen Kısım)
+    if (!person1.children) person1.children = [];
+    if (!person1.children.includes(person2.id)) {
+        person1.children.push(person2.id);
+    }
+
+    // 3. Otomatik ebeveyn tamamlama (Eş durumuna göre 2. ebeveyni ekler)
+    autoCompleteFamily(person2, person1, 'parent-child');
+
+    // 4. Görsel güncelleme ve bildirim
+    renderTree();
+    saveToLocalStorage();
+    showToast(person1.name + ' ebeveyn, ' + person2.name + ' çocuk olarak bağlandı!');
+}
+    else if (type === 'child-parent') {
+    // person1: Çocuk, person2: Ebeveyn
+
+    // 1. Çocuğun (person1) parents dizisini güncelle
+    if (!person1.parents) person1.parents = [];
+    if (!person1.parents.includes(person2.id)) {
+        person1.parents.push(person2.id);
+    }
+
+    // 2. Ebeveynin (person2) children dizisini güncelle
+    if (!person2.children) person2.children = [];
+    if (!person2.children.includes(person1.id)) {
+        person2.children.push(person1.id);
+    }
+
+    // 3. Otomatik aile tamamlama mantığını çalıştır
+    autoCompleteFamily(person1, person2, 'child-parent');
+
+    // 4. Görseli yenile ve kaydet
+    renderTree();
+    saveToLocalStorage();
+    showToast(person2.name + ', ' + person1.name + '\'in ebeveyni olarak eklendi!');
+}
       else if (type === 'sibling') {
         const allSiblings = new Set([person1.id, person2.id]);
         
@@ -2278,68 +2590,79 @@
 
       closeRelationshipModal();
       renderTree();
-    }
+    saveToLocalStorage(); // Her zaman en son kaydet
+}
 
-    function deleteExistingRelationship() {
-      const person1 = tempRelationship.person1;
-      const person2 = tempRelationship.person2;
-      
-      if (!person1 || !person2) return;
-      
-      if (person1.spouse === person2.id) {
-        person1.spouse = null;
-        person2.spouse = null;
-        showToast('Eş bağı silindi!');
-      }
-      
-      if (person1.siblings && person1.siblings.includes(person2.id)) {
-        // İLK TIKLANAN KİŞİ (person1) gruptan çıkar
-        // Person1'in kardeşlerini topla
-        const person1Siblings = [...person1.siblings];
-        
-        // Person1'i SADECE kendisi için temizle
-        person1.siblings = [];
-        person1.parents = [];
-        
-        // Person1'i diğer tüm kardeşlerin listesinden çıkar
-        person1Siblings.forEach(siblingId => {
-          const sibling = people.find(p => p.id === siblingId);
-          if (sibling && sibling.siblings) {
-            sibling.siblings = sibling.siblings.filter(id => id !== person1.id);
-          }
-        });
-        
-        showToast(person1.name + ' kardeş grubundan ayrıldı!');
-      }
-      
-      if (person2.parents && person2.parents.includes(person1.id)) {
-        // Eğer kardeş bağı varsa uyarı ver
-        if (person2.siblings && person2.siblings.length > 0) {
-          showToast('⚠️ Önce ' + person2.name + '\'in kardeşlik bağlarını silmelisiniz!', true);
-          return;
-        }
-        
-        person2.parents = person2.parents.filter(id => id !== person1.id);
-        showToast('Ebeveyn-çocuk bağı silindi!');
-      }
-      if (person1.parents && person1.parents.includes(person2.id)) {
-        // Eğer kardeş bağı varsa uyarı ver
-        if (person1.siblings && person1.siblings.length > 0) {
-          showToast('⚠️ Önce ' + person1.name + '\'in kardeşlik bağlarını silmelisiniz!', true);
-          return;
-        }
-        
-        person1.parents = person1.parents.filter(id => id !== person2.id);
-        showToast('Ebeveyn-çocuk bağı silindi!');
-      }
-      
-      closeRelationshipModal();
-      renderTree();
+   function deleteExistingRelationship() {
+  const person1 = tempRelationship.person1;
+  const person2 = tempRelationship.person2;
+  
+  if (!person1 || !person2) return;
+  
+  // 1. AKTİF EŞ BAĞINI SİL
+  if (person1.spouse === person2.id) {
+    person1.spouse = null;
+    person2.spouse = null;
+    showToast('Aktif eş bağı silindi!');
+  }
+  
+  // 2. ESKİ EŞ BAĞINI SİL (Kritik Eklem)
+  // Eğer aralarında eski bir eş bağı varsa (kesik çizgi), onu diziden temizler
+  if (person1.spouses && person1.spouses.includes(person2.id)) {
+    person1.spouses = person1.spouses.filter(id => id !== person2.id);
+    if (person2.spouses) {
+      person2.spouses = person2.spouses.filter(id => id !== person1.id);
     }
+    showToast('Eski eş bağı kalıcı olarak silindi!');
+  }
+
+  // 3. KARDEŞ BAĞINI SİL (Mevcut mantık - Geliştirildi)
+  if (person1.siblings && person1.siblings.includes(person2.id)) {
+    const person1Siblings = [...person1.siblings];
+    
+    person1.siblings = [];
+    // Not: person1.parents = []; satırı riskli olabilir, 
+    // sadece gruptan ayırmak istiyorsanız parents kalsın denebilir.
+    
+    person1Siblings.forEach(siblingId => {
+      const sibling = people.find(p => p.id === siblingId);
+      if (sibling && sibling.siblings) {
+        sibling.siblings = sibling.siblings.filter(id => id !== person1.id);
+      }
+    });
+    
+    showToast(person1.name + ' kardeş grubundan ayrıldı!');
+  }
+  
+  // 4. EBEVEYN-ÇOCUK BAĞINI SİL (P1 Ebeveyn, P2 Çocuk)
+  if (person2.parents && person2.parents.includes(person1.id)) {
+    if (person2.siblings && person2.siblings.length > 0) {
+      showToast('⚠️ Önce kardeşlik bağlarını silmelisiniz!', true);
+      return;
+    }
+    person2.parents = person2.parents.filter(id => id !== person1.id);
+    showToast('Ebeveyn-çocuk bağı silindi!');
+  }
+
+  // 5. EBEVEYN-ÇOCUK BAĞINI SİL (P2 Ebeveyn, P1 Çocuk)
+  if (person1.parents && person1.parents.includes(person2.id)) {
+    if (person1.siblings && person1.siblings.length > 0) {
+      showToast('⚠️ Önce kardeşlik bağlarını silmelisiniz!', true);
+      return;
+    }
+    person1.parents = person1.parents.filter(id => id !== person2.id);
+    showToast('Ebeveyn-çocuk bağı silindi!');
+  }
+  
+  closeRelationshipModal();
+  renderTree();
+  saveToLocalStorage(); // Değişiklikleri kalıcı yap
+}
 
     function closeRelationshipModal() {
       document.getElementById('relationshipModal').classList.remove('active');
       connectingPerson = null;
+      saveToLocalStorage();
       renderTree();
     }
 
@@ -2420,64 +2743,78 @@
       renderTree();
     }
 
-    function deleteMultiple() {
-      if (selectedPeople.size === 0) return;
+function deleteMultiple() {
+    if (selectedPeople.size === 0) return;
 
-      const deleteBtnSidebar = document.getElementById('deleteMultipleBtnSidebar');
-      const deleteBtnMobile = document.getElementById('deleteMultipleBtnMobile');
-      
-      if (deleteBtnSidebar.title.includes('Emin misiniz?')) {
+    const deleteBtnSidebar = document.getElementById('deleteMultipleBtnSidebar');
+    const deleteBtnMobile = document.getElementById('deleteMultipleBtnMobile');
+
+    if (deleteBtnSidebar.title.includes('Emin misiniz?')) {
         selectedPeople.forEach(personId => {
-          const person = people.find(p => p.id === personId);
-          if (!person) return;
+            const person = people.find(p => p.id === personId);
+            if (!person) return;
 
-          if (person.spouse) {
-            const spouse = people.find(p => p.id === person.spouse);
-            if (spouse) spouse.spouse = null;
-          }
-
-          if (person.siblings) {
-            person.siblings.forEach(sibId => {
-              const sib = people.find(p => p.id === sibId);
-              if (sib) {
-                sib.siblings = sib.siblings.filter(s => s !== personId);
-              }
-            });
-          }
-
-          people.forEach(p => {
-            if (p.parents && p.parents.includes(personId)) {
-              p.parents = p.parents.filter(id => id !== personId);
+            // 1. Aktif Eş Bağını Temizle
+            if (person.spouse) {
+                const spouse = people.find(p => p.id === person.spouse);
+                if (spouse) spouse.spouse = null;
             }
-          });
+
+            // 2. Eski Eşler (spouses) Listesinden Temizle
+            people.forEach(p => {
+                if (p.spouses && p.spouses.includes(personId)) {
+                    p.spouses = p.spouses.filter(id => id !== personId);
+                }
+            });
+
+            // 3. Kardeş Bağlarını Temizle
+            if (person.siblings) {
+                person.siblings.forEach(sibId => {
+                    const sib = people.find(p => p.id === sibId);
+                    if (sib && sib.siblings) {
+                        sib.siblings = sib.siblings.filter(id => id !== personId);
+                    }
+                });
+            }
+
+            // 4. Ebeveyn Bağlarını (Çocuklardan) Temizle
+            people.forEach(p => {
+                if (p.parents && p.parents.includes(personId)) {
+                    p.parents = p.parents.filter(id => id !== personId);
+                }
+            });
         });
 
+        // Veriyi Filtrele ve Sil
         people = people.filter(p => !selectedPeople.has(p.id));
-        
+
         const count = selectedPeople.size;
         selectedPeople.clear();
         multiSelectMode = false;
-        const tooltip = document.getElementById('multiSelectTooltip');
-        if (tooltip) tooltip.textContent = 'Çoklu Seçim';
+        
+        // UI Güncelleme
+        if (document.getElementById('multiSelectTooltip')) {
+            document.getElementById('multiSelectTooltip').textContent = 'Çoklu Seçim';
+        }
         deleteBtnSidebar.style.display = 'none';
         if (deleteBtnMobile) deleteBtnMobile.style.display = 'none';
-        
+
         renderTree();
+        saveToLocalStorage(); // Kaydetmeyi unutma!
         showToast(count + ' kişi silindi!');
-      } else {
+    } else {
+        // "Emin misiniz?" onay mekanizması (Senin kodunla aynı)
         const msg = 'Emin misiniz? (' + selectedPeople.size + ' kişi)';
         deleteBtnSidebar.title = msg;
         if (deleteBtnMobile) deleteBtnMobile.title = msg;
         deleteBtnSidebar.style.background = '#c82333';
-        if (deleteBtnMobile) deleteBtnMobile.style.background = '#c82333';
+        
         setTimeout(() => {
-          deleteBtnSidebar.title = 'Seçilenleri Sil';
-          if (deleteBtnMobile) deleteBtnMobile.title = 'Sil';
-          deleteBtnSidebar.style.background = '#dc3545';
-          if (deleteBtnMobile) deleteBtnMobile.style.background = '#dc3545';
+            deleteBtnSidebar.title = 'Seçilenleri Sil';
+            deleteBtnSidebar.style.background = '#dc3545';
         }, 3000);
-      }
     }
+}
 
     function clearSelection() {
       selectedPerson = null;
@@ -2541,25 +2878,37 @@
         const verticalOffset = CARD_HEIGHT / 2 + 110;
         const verticalStartOffset = CARD_HEIGHT / 2 + 60;
         
-        // Eş bağlantıları için sınırlar
-        const drawnSpouses = new Set();
-        people.forEach(person => {
-          if (person.spouse && !drawnSpouses.has(person.id + '-' + person.spouse) && !drawnSpouses.has(person.spouse + '-' + person.id)) {
-            const spouse = people.find(p => p.id === person.spouse);
-            if (spouse) {
-              const connectionY = Math.max(person.y, spouse.y) + verticalOffset;
-              minY = Math.min(minY, connectionY);
-              maxY = Math.max(maxY, connectionY);
-              
-              const x1 = person.x + horizontalOffset;
-              const x2 = spouse.x + horizontalOffset;
-              minX = Math.min(minX, x1, x2);
-              maxX = Math.max(maxX, x1, x2);
-              
-              drawnSpouses.add(person.id + '-' + person.spouse);
-            }
-          }
-        });
+// Eş bağlantıları için sınırlar (Mevcut ve Eski Eşler Dahil)
+const drawnSpouseBounds = new Set();
+people.forEach(person => {
+  // Mevcut eş + Eski eşler listesini birleştiriyoruz
+  const allSpouseIds = [];
+  if (person.spouse) allSpouseIds.push(person.spouse);
+  
+  // BURAYI GÜNCELLEDİM: formerSpouses yerine spouses (veya her ikisi)
+  if (person.spouses) allSpouseIds.push(...person.spouses);
+  else if (person.formerSpouses) allSpouseIds.push(...person.formerSpouses);
+
+  allSpouseIds.forEach(spouseId => {
+    const key = [person.id, spouseId].sort().join('-');
+    if (!drawnSpouseBounds.has(key)) {
+      const spouse = people.find(p => p.id === spouseId);
+      if (spouse) {
+        // verticalOffset ve horizontalOffset'in tanımlı olduğundan emin ol
+        const connectionY = Math.max(person.y, spouse.y) + verticalOffset;
+        minY = Math.min(minY, connectionY);
+        maxY = Math.max(maxY, connectionY);
+        
+        const x1 = person.x + horizontalOffset;
+        const x2 = spouse.x + horizontalOffset;
+        minX = Math.min(minX, x1, x2);
+        maxX = Math.max(maxX, x1, x2);
+        
+        drawnSpouseBounds.add(key);
+      }
+    }
+  });
+});
         
         // Ebeveyn-çocuk bağlantıları için sınırlar
         const processedParentGroups = new Set();
@@ -2702,38 +3051,49 @@
         }
       }
     }
+async function drawConnectionsToCanvas(ctx, offsetX, offsetY) {
+  // Ebeveyn-çocuk bağlantıları (Burası aynı kalabilir)
+  const processedParentGroups = new Set();
+  people.forEach(child => {
+    if (child.parents && child.parents.length > 0) {
+      const parentKey = [...child.parents].sort().join('-');
+      if (!processedParentGroups.has(parentKey)) {
+        const children = people.filter(p => {
+          if (!p.parents || p.parents.length === 0) return false;
+          const pKey = [...p.parents].sort().join('-');
+          return pKey === parentKey;
+        });
+        drawParentToChildrenConnectionCanvas(ctx, child.parents, children, offsetX, offsetY);
+        processedParentGroups.add(parentKey);
+      }
+    }
+  });
 
-    async function drawConnectionsToCanvas(ctx, offsetX, offsetY) {
-      // Ebeveyn-����ocuk bağlantıları
-      const processedParentGroups = new Set();
-      people.forEach(child => {
-        if (child.parents && child.parents.length > 0) {
-          const parentKey = [...child.parents].sort().join('-');
-          
-          if (!processedParentGroups.has(parentKey)) {
-            const children = people.filter(p => {
-              if (!p.parents || p.parents.length === 0) return false;
-              const pKey = [...p.parents].sort().join('-');
-              return pKey === parentKey;
-            });
-            
-            drawParentToChildrenConnectionCanvas(ctx, child.parents, children, offsetX, offsetY);
-            processedParentGroups.add(parentKey);
-          }
+const drawnSpouses = new Set();
+people.forEach(person => {
+    // A. MEVCUT EŞ (DÜZ ÇİZGİ)
+    if (person.spouse) {
+        const spouse = people.find(p => p.id === person.spouse);
+        const key = [person.id, person.spouse].sort().join('-');
+        if (spouse && !drawnSpouses.has(key)) {
+            drawSpouseConnectionCanvas(ctx, person, spouse, offsetX, offsetY, false);
+            drawnSpouses.add(key);
         }
-      });
-      
-      // Eş ba����lantıları
-      const drawnSpouses = new Set();
-      people.forEach(person => {
-        if (person.spouse && !drawnSpouses.has(person.id + '-' + person.spouse) && !drawnSpouses.has(person.spouse + '-' + person.id)) {
-          const spouse = people.find(p => p.id === person.spouse);
-          if (spouse) {
-            drawSpouseConnectionCanvas(ctx, person, spouse, offsetX, offsetY);
-            drawnSpouses.add(person.id + '-' + person.spouse);
-          }
-        }
-      });
+    }
+
+    // B. ESKİ EŞLER (KESİK ÇİZGİ)
+    if (person.spouses && person.spouses.length > 0) {
+        person.spouses.forEach(sId => {
+            const oldSpouse = people.find(p => p.id === sId);
+            const key = [person.id, sId].sort().join('-');
+            if (oldSpouse && !drawnSpouses.has(key)) {
+                drawSpouseConnectionCanvas(ctx, person, oldSpouse, offsetX, offsetY, true);
+                drawnSpouses.add(key);
+            }
+        });
+    }
+});
+
       
       // Kardeş ba����lant��ları
       const processedSiblingGroups = new Set();
@@ -2751,36 +3111,44 @@
       });
     }
 
-    function drawLineCanvas(ctx, x1, y1, x2, y2, color, width, dashArray = null) {
-      ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
-      ctx.strokeStyle = color;
-      ctx.lineWidth = width;
-      if (dashArray) {
-        ctx.setLineDash(dashArray);
-      } else {
-        ctx.setLineDash([]);
-      }
-      ctx.stroke();
-    }
+// 2. Çizgiyi Ekrana Basan Temel Fonksiyon
+function drawLineCanvas(ctx, x1, y1, x2, y2, color, width, dash = []) {
+  ctx.beginPath();
+// dash değişkeninin dizi olduğundan emin oluyoruz
+if (Array.isArray(dash)) {
+    ctx.setLineDash(dash);
+} else if (dash === true) {
+    ctx.setLineDash([5, 5]); // Kesik çizgi istenmişse 5px çizgi, 5px boşluk
+} else {
+    ctx.setLineDash([]); // Düz çizgi (boş dizi)
+}  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.stroke(); // Çizgiyi çiz
+  ctx.setLineDash([]); // AYARLARI SIFIRLA (Çok Önemli!)
+}
 
-    function drawSpouseConnectionCanvas(ctx, person1, person2, offsetX, offsetY) {
-      const centerX1 = person1.x - offsetX;
-      const centerY1 = person1.y - offsetY;
-      const centerX2 = person2.x - offsetX;
-      const centerY2 = person2.y - offsetY;
-      
-      const horizontalOffset = 0;
-      const verticalOffset = CARD_HEIGHT / 2 + 70;
-      const verticalStartOffset = CARD_HEIGHT / 2;
-      
-      const connectionY = Math.max(centerY1, centerY2) + verticalOffset;
-      
-      drawLineCanvas(ctx, centerX1 + horizontalOffset, centerY1 + verticalStartOffset, centerX1 + horizontalOffset, connectionY, '#f97316', 3);
-      drawLineCanvas(ctx, centerX2 + horizontalOffset, centerY2 + verticalStartOffset, centerX2 + horizontalOffset, connectionY, '#f97316', 3);
-      drawLineCanvas(ctx, centerX1 + horizontalOffset, connectionY, centerX2 + horizontalOffset, connectionY, '#f97316', 3);
-    }
+// 1. Koordinatları Hesaplayan Fonksiyon
+function drawSpouseConnectionCanvas(ctx, person1, person2, offsetX, offsetY, isFormer = false) {
+  const centerX1 = person1.x - offsetX;
+  const centerY1 = person1.y - offsetY;
+  const centerX2 = person2.x - offsetX;
+  const centerY2 = person2.y - offsetY;
+  
+  const verticalOffset = CARD_HEIGHT / 2 + 70;
+  const verticalStartOffset = CARD_HEIGHT / 2; // Başlangıç noktası
+  const connectionY = Math.max(centerY1, centerY2) + verticalOffset;
+  
+  // Kesik çizgi deseni: [10px dolu, 5px boş]
+  const dashPattern = isFormer ? [10, 5] : []; 
+  const color = '#f97316'; // Turuncu
+
+  // drawLineCanvas'a dashPattern'i gönderiyoruz
+  drawLineCanvas(ctx, centerX1, centerY1 + verticalStartOffset, centerX1, connectionY, color, 3, dashPattern);
+  drawLineCanvas(ctx, centerX2, centerY2 + verticalStartOffset, centerX2, connectionY, color, 3, dashPattern);
+  drawLineCanvas(ctx, centerX1, connectionY, centerX2, connectionY, color, 3, dashPattern);
+}
 
     function drawSiblingConnectionCanvas(ctx, siblingGroup, offsetX, offsetY) {
       if (!siblingGroup || siblingGroup.length < 2) return;
@@ -2832,67 +3200,63 @@
     }
 
     function drawParentToChildrenConnectionCanvas(ctx, parentIds, children, offsetX, offsetY) {
-      if (!parentIds || parentIds.length === 0 || !children || children.length === 0) return;
-      
-      const parents = parentIds.map(id => people.find(p => p.id === id)).filter(Boolean);
-      if (parents.length === 0) return;
-      
-      let isDashed = false;
-      if (parents.length === 1) {
-        const singleParent = parents[0];
-        if (singleParent.spouse) {
-          const spouse = people.find(p => p.id === singleParent.spouse);
-          if (spouse) {
-            const spouseIsParent = children.some(child => 
-              child.parents && child.parents.includes(spouse.id)
-            );
-            isDashed = !spouseIsParent;
-          }
-        }
+  if (!parentIds || parentIds.length === 0 || !children || children.length === 0) return;
+  
+  // Veri kaynağını garantiye al
+  const currentPeople = window.people || people;
+  const parents = parentIds.map(id => currentPeople.find(p => p.id === id)).filter(Boolean);
+  if (parents.length === 0) return;
+  
+  // --- Çizgi Tipi (Düz/Kesik) ---
+  let isDashed = false;
+  if (parents.length === 1) {
+    const singleParent = parents[0];
+    if (singleParent.spouse) {
+      const spouse = currentPeople.find(p => p.id === singleParent.spouse);
+      if (spouse) {
+        const spouseIsParent = children.some(child => 
+          child.parents && child.parents.includes(spouse.id)
+        );
+        isDashed = !spouseIsParent;
       }
-      const dashArray = isDashed ? [5, 5] : null;
-      
-      const horizontalOffset = 0;
-      const greenHorizontalOffset = 0;
-      
-      const maxParentY = Math.max(...parents.map(p => p.y));
-      
-      const parent1 = parents[0];
-      const parent2 = parents.length > 1 ? parents[1] : parent1;
-      const spouseConnectionMidX = ((parent1.x + parent2.x) / 2) + horizontalOffset - offsetX;
-      
-      const parentConnectionY = maxParentY + CARD_HEIGHT / 2 + 70 - offsetY;
-      
-      const firstChild = children[0];
-      const hasSiblings = firstChild.siblings && firstChild.siblings.length > 0;
-      
-      let childConnectionY;
-      let greenLineX;
-      
-      if (hasSiblings) {
-        const childrenAvgY = children.reduce((sum, c) => sum + c.y, 0) / children.length;
-        childConnectionY = childrenAvgY - CARD_HEIGHT / 2 - 20 - offsetY;
-        
-        const minChildX = Math.min(...children.map(c => c.x));
-        const maxChildX = Math.max(...children.map(c => c.x));
-        greenLineX = ((minChildX + maxChildX) / 2) + greenHorizontalOffset - offsetX;
-      } else {
-        const childrenAvgX = children.reduce((sum, c) => sum + c.x, 0) / children.length;
-        const childrenAvgY = children.reduce((sum, c) => sum + c.y, 0) / children.length;
-        greenLineX = childrenAvgX + greenHorizontalOffset - offsetX;
-        childConnectionY = childrenAvgY - CARD_HEIGHT / 2 - 70 - offsetY;
-      }
-      
-      const safeChildConnectionY = childConnectionY;
-      
-      drawLineCanvas(ctx, spouseConnectionMidX, parentConnectionY, spouseConnectionMidX, safeChildConnectionY, '#10b981', 3, dashArray);
-      drawLineCanvas(ctx, spouseConnectionMidX, safeChildConnectionY, greenLineX, safeChildConnectionY, '#10b981', 3, dashArray);
-      
-      children.forEach(child => {
-        const cardTop = child.y - CARD_HEIGHT / 2 - offsetY;
-        drawLineCanvas(ctx, child.x + greenHorizontalOffset - offsetX, safeChildConnectionY, child.x + greenHorizontalOffset - offsetX, cardTop, '#10b981', 3, dashArray);
-      });
     }
+  }
+  const dashArray = isDashed ? [5, 5] : null;
+
+  // --- Koordinat Hesaplamaları ---
+  const cH = (typeof CARD_HEIGHT !== 'undefined') ? CARD_HEIGHT : 90;
+  
+  // 1. TURUNCU ÇİZGİ ORTA NOKTASI (Yeşil hat buradan başlamalı)
+  // Ebeveynlerin X ortalaması
+  const parent1 = parents[0];
+  const parent2 = parents.length > 1 ? parents[1] : parent1;
+  const spouseConnectionMidX = ((parent1.x + parent2.x) / 2) - offsetX;
+  
+  // Turuncu çizginin Y seviyesi (U-tipi bağlantının en altı)
+  const maxParentY = Math.max(...parents.map(p => p.y));
+  const parentConnectionY = maxParentY + cH / 2 + 70 - offsetY;
+
+  // 2. ÇOCUK BAĞLANTI SEVİYESİ
+  // Çocukların en üst noktasından biraz yukarıda bir "dağıtım hattı" kuruyoruz
+  const minChildY = Math.min(...children.map(c => c.y));
+  const childConnectionY = minChildY - cH / 2 - 40 - offsetY;
+
+  // 3. ÇİZİM
+  // A. Ebeveynlerin ortasından (turuncudan) çocukların hizasına inen ana dikey hat
+  drawLineCanvas(ctx, spouseConnectionMidX, parentConnectionY, spouseConnectionMidX, childConnectionY, '#10b981', 3, dashArray);
+  
+  // B. Çocuklara dağılan yatay hat ve aşağı inen kollar
+  children.forEach(child => {
+    const childX = child.x - offsetX;
+    const childTop = child.y - cH / 2 - offsetY;
+
+    // Yatay kol (Ana dikey hattan çocuğun hizasına)
+    drawLineCanvas(ctx, spouseConnectionMidX, childConnectionY, childX, childConnectionY, '#10b981', 3, dashArray);
+    
+    // Çocuğun kafasına inen dikey kol
+    drawLineCanvas(ctx, childX, childConnectionY, childX, childTop, '#10b981', 3, dashArray);
+  });
+}
 
     async function drawCardsToCanvas(ctx, offsetX, offsetY) {
       ctx.font = 'bold 16px "Segoe UI", sans-serif';
@@ -2963,66 +3327,83 @@
       editingPersonId = null;
     });
 
-    document.getElementById('addPersonForm').addEventListener('submit', function(e) {
-      e.preventDefault();
+document.getElementById('addPersonForm').addEventListener('submit', function(e) {
+  e.preventDefault();
 
-      const name = document.getElementById('personName').value;
-      const gender = document.getElementById('personGender').value;
-      const birthYear = document.getElementById('personBirthYear').value;
-      const notes = document.getElementById('personNotes').value;
+  const name = document.getElementById('personName').value;
+  const gender = document.getElementById('personGender').value;
+  const birthYear = document.getElementById('personBirthYear').value ? parseInt(document.getElementById('personBirthYear').value) : null;
+  const notes = document.getElementById('personNotes').value || '';
+  const newSpouseId = document.getElementById('personSpouse')?.value ? parseInt(document.getElementById('personSpouse').value) : null;
 
-      if (editingPersonId) {
-        const person = people.find(p => p.id === editingPersonId);
-        if (person) {
-          person.name = name;
-          person.gender = gender;
-          person.birthYear = birthYear ? parseInt(birthYear) : null;
-          person.notes = notes || '';
-          showToast(person.name + ' güncellendi!');
+  if (editingPersonId) {
+    // editingPersonId'nin number olduğundan emin olalım
+    const person = people.find(p => p.id == editingPersonId);
+    
+    if (person) {
+      const oldSpouseId = person.spouse;
+
+      // EĞER EŞ DEĞİŞTİYSE (Mehmet'in eşi Ayşe'den başkası yapıldıysa)
+      if (oldSpouseId && oldSpouseId !== newSpouseId) {
+        console.log("Sistem: Eş değişikliği algılandı. Eski eş ID:", oldSpouseId);
+
+        // 1. Mehmet'in eski eşler listesini güncelle
+        if (!person.spouses) person.spouses = [];
+        if (!person.spouses.includes(oldSpouseId)) {
+          person.spouses.push(oldSpouseId);
+          console.log("Sistem: Eski eş Mehmet'in listesine eklendi.");
         }
-      } else {
-        // Ekranda görünen alanın sol ��st köşesinden 150px içeride hesapla
-        const container = document.getElementById('treeContainer');
-        
-        // Container'ın sol üst köşesinden 150px içeride (container içi koordinat)
-        const targetContainerX = 150;
-        const targetContainerY = 150;
-        
-        // Container koordinatların�� canvas koordinatlarına çevir
-        // currentTranslateX/Y negatif ise sağa/aşağı kaymış demektir
-        const canvasX = (targetContainerX / currentScale) - currentTranslateX;
-        const canvasY = (targetContainerY / currentScale) - currentTranslateY;
-        
-        const newPerson = {
-          id: Date.now(),
-          name: name,
-          gender: gender,
-          birthYear: birthYear ? parseInt(birthYear) : null,
-          notes: notes || '',
-          x: canvasX,
-          y: canvasY,
-          spouse: null,
-          parents: [],
-          siblings: []
-        };
-        
-        people.push(newPerson);
-        
-        // Modalı kapat
-        document.getElementById('addPersonModal').classList.remove('active');
-        document.getElementById('addPersonForm').reset();
-        
-        renderTree();
-        showToast(newPerson.name + ' eklendi!');
-        
-        return;
+
+        // 2. Ayşe'nin (Eski eş) verisini güncelle
+        const oldSpouse = people.find(p => p.id == oldSpouseId);
+        if (oldSpouse) {
+          oldSpouse.spouse = null; // Aktif bağı kopar
+          if (!oldSpouse.spouses) oldSpouse.spouses = [];
+          if (!oldSpouse.spouses.includes(person.id)) {
+            oldSpouse.spouses.push(person.id); 
+          }
+        }
       }
 
-      renderTree();
-      document.getElementById('addPersonModal').classList.remove('active');
-      document.getElementById('addPersonForm').reset();
-      editingPersonId = null;
-    });
+      // 3. Yeni eşi bağla
+      person.spouse = newSpouseId;
+      if (newSpouseId) {
+        const target = people.find(p => p.id == newSpouseId);
+        if (target) target.spouse = person.id;
+      }
+
+      // Bilgileri güncelle
+      person.name = name;
+      person.gender = gender;
+      person.birthYear = birthYear;
+      person.notes = notes;
+    }
+  } else {
+    // Yeni kişi ekleme (Burada spouses: [] boş başlar)
+    const newPerson = {
+      id: Date.now(),
+      name, gender, birthYear, notes,
+      x: (150 / currentScale) - currentTranslateX,
+      y: (150 / currentScale) - currentTranslateY,
+      spouse: newSpouseId,
+      spouses: [], // Her zaman diziyle başla
+      parents: [],
+      children: [], // Buraya ekledik! Artık her yeni kartın içinde hazır bekliyor.
+      siblings: []
+    };
+    if (newSpouseId) {
+      const target = people.find(p => p.id == newSpouseId);
+      if (target) target.spouse = newPerson.id;
+    }
+    people.push(newPerson);
+  }
+
+  renderTree();
+  saveToLocalStorage();
+  document.getElementById('addPersonModal').classList.remove('active');
+  editingPersonId = null;
+});
+
 
     document.getElementById('closeRelModalBtn').addEventListener('click', closeRelationshipModal);
     document.getElementById('cancelRelBtn').addEventListener('click', closeRelationshipModal);
@@ -3105,3 +3486,4 @@
   </script>
  </body>
 </html>
+
